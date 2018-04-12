@@ -215,5 +215,47 @@ NSThread* myThread = [[NSThread alloc] initWithTarget:self selector:@selector(my
 
 ### 使用 POSIX 线程
 
-OS X和iOS为使用POSIX线程API来创建线程提供了基于C语言的支持。
+OS X和iOS为使用POSIX线程API来创建线程提供了基于C语言的支持。该技术实际上可以用于任何类型的应用程序（包括Cocoa和Cocoa Touch应用程序），如果我们正在为多个平台编写软件，该技术可能会更方便。
+
+以下代码显示了两个使用POSIX调用的自定义函数。LaunchThread函数创建一个新的线程，其主例程在PosixThreadMainRoutine函数中实现。由于POSIX默认将线程创建为可连接，因此此示例更改了线程的属性来创建分离线程。将线程标记为分离，可以让系统在该线程退出时立即回收资源。
+```
+#include <assert.h>
+#include <pthread.h>
+
+void* PosixThreadMainRoutine(void* data)
+{
+    // Do some work here.
+
+    return NULL;
+}
+
+void LaunchThread()
+{
+    // Create the thread using POSIX routines.
+    pthread_attr_t  attr;
+    pthread_t       posixThreadID;
+    int             returnVal;
+
+    returnVal = pthread_attr_init(&attr);
+    assert(!returnVal);
+    returnVal = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    assert(!returnVal);
+
+    int     threadError = pthread_create(&posixThreadID, &attr, &PosixThreadMainRoutine, NULL);
+
+    returnVal = pthread_attr_destroy(&attr);
+    assert(!returnVal);
+    if (threadError != 0)
+    {
+        // Report an error.
+    }
+}
+```
+如果将以上代码添加到某个源文件并调用LaunchThread函数，这样会在应用程序中创建一个新的分离线程。当然，使用这段代码创建的新线程不会做任何有用的事情。线程讲启动并立即退出。为了使事情更有趣，我们需要将代码添加到PosixThreadMainRoutine函数中以完成一些实际工作。为了确保线程知道要做什么工作，可以在创建时传递一些数据的指针给它。将此指针作为`pthread_create`函数的最后一个参数传递。
+
+为了将新创建的线程的信息传递回应用程序的主线程，需要在目标线程之间建立通信路径。对于基于C的应用程序，线程之间有多种通信方式，包括使用端口、 条件或共享内存。对于长寿命的线程，几乎总是应该建立某种线程间通信机制，以便让应用程序的主线程检查线程的状态或者在应用程序退出时干净地关闭线程。
+
+### 使用NSObject来生成一个线程
+
+
 
