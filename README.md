@@ -295,7 +295,7 @@ void LaunchThread()
 | POSIX | 创建一个新的`pthread_attr_t`结构体并使用`pthread_attr_setstacksize`函数更改默认堆栈大小。创建线程时，将属性传递给`pthread_create`函数。 |
 | Multiprocessing Services | 在创建线程时将相应的堆栈大小值传递给`MPCreateTask`函数。 |
 
-### 配置线程本地存储
+### 配置线程局部存储
 
 每个线程维护着一个可以从任何位置访问的键-值对的字典。可以使用此字典来存储希望在整个线程执行期间都存在的信息。例如，我们可以使用它通过线程的run loop的多次迭代来保存状态信息。
 
@@ -340,7 +340,7 @@ Cocoa和POSIX以不同的方式存储线程字典，所以不能混合和匹配�
     [pool release];  // Release the objects in the pool.
 }
 ```
-由于顶级自动释放池在线程退出之前不会释放其对象，因此长期线程应创建更多的自动释放池来更频繁地释放对象。例如，使用run loop的线程可能会在每次运行循环时创建和释放自动释放池。更频繁地释放对象可防止应用程序的内存占用过大，从而导致性能问题。与任何与性能相关的行为一样，应该测量代码的实际性能，并适当调整自动释放池的使用。
+**由于顶级自动释放池在线程退出之前不会释放其对象，因此长期线程应创建更多的自动释放池来更频繁地释放对象。例如，使用run loop的线程可能会在每次运行循环时创建和释放自动释放池。更频繁地释放对象可防止应用程序的内存占用过大，从而导致性能问题。与任何与性能相关的行为一样，应该测量代码的实际性能，并适当调整自动释放池的使用。**
 
 有关内存管理和自动释放池的更多信息，请参看[Advanced Memory Management Programming Guide](https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/MemoryMgmt/Articles/MemoryMgmt.html#//apple_ref/doc/uid/10000011i)。
 
@@ -352,6 +352,44 @@ Cocoa和POSIX以不同的方式存储线程字典，所以不能混合和匹配�
 
 ### 设置Run Loop
 
+当编写想要在单独的线程上运行的代码时，我们有两种选择。第一种选择是将线程的代码编写为一个很少或者根本不中断的长期任务，并在该任务完成时退出线程。第二种选择是把线程放到一个循环中，当有请求到达时，动态处理请求。第一种选择不需要为代码进行特殊配置，只需要开启执行想要执行的工作。但是，第二种选择涉及到设置线程的run loop。
 
+OS X和iOS为在每个线程中实现run loop提供了内置支持。应用程序框架自动启动应用程序主线程的run loop。如果为创建的任何辅助线程配置了run loop，则需要手动启动该run loop。
+
+## 终止线程
+
+建议退出线程的方式是让其正常退出入口点例程，虽然Cocoa，POSIX和Multiprocessing Services提供了直接杀死线程的例程，但是强烈建议不要使用这样的例程。杀死一个线程阻止了该线程清理自身的行为。由该线程分配的内存可能会泄漏，并且线程当前正在使用的任何其他资源可能无法被正确清理，之后可能会造成潜在问题。
+
+如果预计需要在操作过程中终止线程，则应该从一开始就设计线程来响应取消或者退出消息。对于长时间运行的操作，这可能意味着要定期停止工作并检查是否收到了这样的消息。如果收到消息要求线程退出，线程将有机会执行任何需要的清理和正常退出。否则，它可能会重新开始工作并处理下一个数据块。
+
+响应取消消息的一种方式是使用run loop输入源来接收此类消息。以下示例显示了这个代码在线程的主入口例程中的外观结构。（该示例仅显示主循环部分，不包括设置自动释放池或配置实际工作的步骤。）该示例在run loop中安装了一个自定义输入源，该输入源可以从另一个线程向该线程发送消息。在执行完总的工作量的一部分后，线程会简要地运行run loop来查看有没有消息到达输入源。如果没有，run loop会立即退出并起循环继续下一个工作。由于处理程序不能直接访问`exitNow`局部变量，所以退出条件通过线程字典中的键值对传递。
+```
+- (void)threadMainRoutine
+{
+    BOOL moreWorkToDo = YES;
+    BOOL exitNow = NO;
+    NSRunLoop* runLoop = [NSRunLoop currentRunLoop];
+
+    // Add the exitNow BOOL to the thread dictionary.
+    NSMutableDictionary* threadDict = [[NSThread currentThread] threadDictionary];
+    
+    [threadDict setValue:[NSNumber numberWithBool:exitNow] forKey:@"ThreadShouldExitNow"];
+
+    // Install an input source.
+    [self myInstallCustomInputSource];
+
+    while (moreWorkToDo && !exitNow)
+    {
+        // Do one chunk of a larger body of work here.
+        // Change the value of the moreWorkToDo Boolean when done.
+
+        // Run the run loop but timeout immediately if the input source isn't waiting to fire.
+        [runLoop runUntilDate:[NSDate date]];
+
+        // Check to see if an input source handler changed the exitNow value.
+        exitNow = [[threadDict valueForKey:@"ThreadShouldExitNow"] boolValue];
+    }
+}
+```
 
 
