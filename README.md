@@ -201,7 +201,19 @@ OS X和iOS中的每个进程（应用程序）都由一个或多个线程组成�
 ```
 在OS X v10.5之前，主要使用`NSThread`类来生成线程。虽然我们可以得到一个`NSThread`对象并访问一些线程属性，但是只能在线程本身运行后才能这样做。在OS X v10.5中，添加了用于创建`NSThread`对象而不立即生成相应的新线程的支持。（此支持在iOS中也可用。）此支持使得在启动线程之前可以获取和设置各种线程属性成为可能，它还使得可以使用该线程对象稍后引用正在运行的线程成为可能。
 
-在OS X v10.5及更高版本中初始化`NSThread`对象的简单方法是使用`initWithTarget:selector:object:`方法。
+在OS X v10.5及更高版本中初始化`NSThread`对象的简单方法是使用`initWithTarget:selector:object:`方法。此方法使用与` detachNewThreadSelector:toTarget:withObject:`方法完全相同的信息来初始化新的`NSThread`实例。但是，它不会立即启动线程。要启动线程，请明确调用线程对象的`start`方法，如下所示：
+```
+NSThread* myThread = [[NSThread alloc] initWithTarget:self selector:@selector(myThreadMainMethod:) object:nil];
 
+[myThread start];  // Actually create the thread
+```
+> **注意**：一种使用`initWithTarget:selector:object:`方法的替代方案是对`NSThread`进行子类化并覆写其`main`方法。可以使用`main`方法的重写版本来实现线程的主入口点。更多信息，请参看[NSThread Class Reference](https://developer.apple.com/documentation/foundation/thread)。
 
+如果我们有一个其当前线程正在运行的`NSThread`对象，则一种发送消息到该线程的方法是使用应用程序中几乎任何对象的`performSelector:onThread:withObject:waitUntilDone:`方法。在OS X v10.5中引入了对线程（主线程除外）执行选择器的支持，这是在线程之间进行通信的便捷方式。（此支持在iOS中也可用。）使用该技术发送的消息由其他线程直接执行，作为目标线程正常运行循环处理的一部分。（当然，这意味着目标线程必须在其run loop中运行。）当我们以这种方式进行通信时，可能仍然需要某种形式的同步，但它比在线程之间设置端口要简单。
+
+> **注意**：虽然`performSelector:onThread:withObject:waitUntilDone:`方法适用于线程之间的偶尔通信，但不应该使用该方法来处理线程之间的时间紧张或频繁的通信。
+
+### 使用 POSIX 线程
+
+OS X和iOS为使用POSIX线程API来创建线程提供了基于C语言的支持。
 
