@@ -325,6 +325,33 @@ Cocoa和POSIX以不同的方式存储线程字典，所以不能混合和匹配�
 
 ### 创建自动释放池
 
+链接了Objective-C框架的应用程序通常必须在其每个线程中至少创建一个自动释放池。如果应用程序使用托管模型 -- 应用程序处理保留和释放对象的位置 -- 自动释放池将捕获该线程中自动释放的所有对象。
+
+如果应用程序使用垃圾回收而不是托管内存模型，则不需要创建自动释放池。自动释放池的存在并不会对垃圾回收应用程序造成危害，大多数情况下都会被忽略。在允许代码模块必须同时支持垃圾回收和托管内存模型的情况下，自动释放池必须存在以便支持托管内存模型代码，并且如果应用程序在启用垃圾回收的情况下运行，则会被忽略。
+
+如果应用程序使用托管内存模型，则创建自动释放池是在线程入口例程中首先执行的操作。同样，销毁这个自动释放池应该是在线程中做的最后一件事。该池确保自动释放的对象被捕获，在线程本身退出之前它不会释放它们。以下代码显示了使用自动释放池的基本线程入口例程的结构。
+```
+- (void)myThreadMainRoutine
+{
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init]; // Top-level pool
+
+    // Do thread work here.
+
+    [pool release];  // Release the objects in the pool.
+}
+```
+由于顶级自动释放池在线程退出之前不会释放其对象，因此长期线程应创建更多的自动释放池来更频繁地释放对象。例如，使用run loop的线程可能会在每次运行循环时创建和释放自动释放池。更频繁地释放对象可防止应用程序的内存占用过大，从而导致性能问题。与任何与性能相关的行为一样，应该测量代码的实际性能，并适当调整自动释放池的使用。
+
+有关内存管理和自动释放池的更多信息，请参看[Advanced Memory Management Programming Guide](https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/MemoryMgmt/Articles/MemoryMgmt.html#//apple_ref/doc/uid/10000011i)。
+
+### 设置异常处理程序
+
+如果应用程序捕获并处理异常，则应准备好线程代码以便捕获可能发生的任何异常。尽管在发生异常的地方处理异常是最好的，但如果未能在线程中捕获抛出的异常，则会导致应用程序退出。在线程入口例程中安装最终的**try/catch**可以让我们捕获任何未知的异常并提供适当的响应。
+
+在Xcode中构建项目时，可以使用C++或Objective-C异常处理样式。有关设置如何在Objective-C中引发和捕获异常的信息，请参看[Exception Programming Topics](https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/Exceptions/Exceptions.html#//apple_ref/doc/uid/10000012i)。
+
+### 设置Run Loop
+
 
 
 
