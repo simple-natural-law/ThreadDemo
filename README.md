@@ -177,7 +177,7 @@ OS X和iOS中的每个进程（应用程序）都由一个或多个线程组成�
 |-------|----------------|--------|
 | 内核数据结构 | 大约1 KB | 该内存用于存储线程数据结构和属性，其中大部分分配为wired memory，因此无法被分页到磁盘。 |
 | 堆栈空间 | 512 KB（辅助线程）<br>8 MB（OS X 主线程）<br>1 MB（iOS 主线程） | 辅助线程允许的最小堆栈大小为16 KB，堆栈大小必须是4 KB的倍数。这个内存的空间在创建线程的时候被放置在进程空间中，但是与该内存相关联的实际页面只有在需要的时候才会被创建。 |
-| 创建耗时 | 大约90微秒 | 该值反映了创建线程的初始调用到线程入口点开始执行的时间间隔。该数据是通过分析在基于Intel的使用2 GHz Core Duo处理器和和运行OS X v10.5 的RAM为1 GB的iMac上创建线程时生成的平均值和中值而确定的。 |
+| 创建耗时 | 大约90微秒 | 该值反映了创建线程的初始调用到线程入口点开始执行的时间间隔。该数据是通过分析在基于Intel的使用2 GHz Core Duo处理器和运行OS X v10.5 的RAM为1 GB的iMac上创建线程时生成的平均值和中值而确定的。 |
 
 > **注意**：由于底层内核的支持，操作对象通常可用更快地创建线程。它们不是每次都从头开始创建线程，而是使用已驻留在内核中的线程池来节省分配时间。有关如何使用操作对象的更多信息，请参看[iOS并发编程 -- Operation Queues](https://www.jianshu.com/p/65ab102cac60)。
 
@@ -294,6 +294,7 @@ void LaunchThread()
 | Cocoa | 在iOS和OS X v10.5及更高版本中，分配并初始化一个`NSThread`对象（不要使用`detachNewThreadSelector:toTarget:withObject:`方法）。在调用线程对象的`start`方法之前，请使用`setStackSize:`方法来指定新的堆栈大小。 |
 | POSIX | 创建一个新的`pthread_attr_t`结构体并使用`pthread_attr_setstacksize`函数更改默认堆栈大小。创建线程时，将属性传递给`pthread_create`函数。 |
 | Multiprocessing Services | 在创建线程时将相应的堆栈大小值传递给`MPCreateTask`函数。 |
+
 
 
 
