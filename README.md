@@ -257,5 +257,12 @@ void LaunchThread()
 
 ### 使用NSObject来生成一个线程
 
+在iOS和OS X v10.5及更高版本中，所有对象都能够生成一个新线程，并使用该线程来执行对象的方法中的一个。`performSelectorInBackground:withObject:`方法创建一个新的分离线程，并使用指定的方法作为该线程的入口点。例如，如果我们有一些对象（由变量myObj表示），并且这些对象有一个名为doSomething的方法，我们想要在后台线程中运行该方法，则可以使用以下代码执行此操作：
+```
+[myObj performSelectorInBackground:@selector(doSomething) withObject:nil];
+```
+调用此方法的效果与将当前对象、选择器和参数对象作为参数调用`detachNewThreadSelector:toTarget:withObject:`方法的效果相同。会立即使用默认配置生成新线程，并启动运行新线程。在选择器内部，必须像任何线程一样配置线程。例如，需要设置一个自动释放池并且配置线程的run loop（如果打算使用它的话）。
+
+### 在Cocoa应用程序中使用POSIX线程
 
 
