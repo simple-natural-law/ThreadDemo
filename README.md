@@ -416,5 +416,23 @@ Run loop从两种不同类型的源中接收事件。输入源传递异步事件
 
 ### Run Loop模式
 
-run loop模式是要监听的输入源和定时器的集合和要通知的运行循环观察者的集合。
+run loop模式是要监听的输入源和定时器的集合和要通知的运行循环观察者的集合。每次运行run loop时，都要明确或隐式地指定要运行的特定“模式”。在运行循环过程中，只监听与该模式有关的源并允许其传递事件。（同样，只有与该模式相关的观察者才会收到run loop的进度的通知。）与其他模式关联的源会保留任何新事件，直到随后已适当的模式通过循环为止。
+
+在代码中，可以通过名称来识别模式。Cocoa和Core Foundation都定义了一个默认模式和几个常用模式，以及用于在代码中指定这些模式的字符串。可以通过简单地为模式名称指定一个自定义字符串来自定义模式。虽然分配给自定义模式的名称是任意的，但这些模式的内容不是。必须确保将一个或多个输入源、 定时器或运行循环观察者添加到为它们创建的任何模式中，使它们生效。
+
+可以使用模式在通过run loop的特定关口期间过滤掉不需要的源中的事件。大多数情况下，需要在系统定义的“默认”模式下运行run loop。但是，modal panel可能会以“模态”模式运行run loop。在此模式下，只有与modal panel相关的源才会将事件传递给线程。对于辅助线程，可以使用自定义模式来防止低优先级的源在时间紧张的运作期间传递事件。
+
+> **注意**：模式基于事件的源来进行区分，而不是事件的类型。例如，不会使用模式来仅仅匹配鼠标按下事件或者仅匹配键盘事件。可以使用模式来监听不同的端口集、 暂时暂停定时器或者更改当前正在监听的源和运行循环观察者。
+
+下表列出了Cocoa和Core Foundation定义的标准模式以及何时使用该模式的说明。名称列列出了用于在代码中指定模式的实际常量。
+
+| Mode | Name | Description |
+|--------|--------|---------------|
+| Default | NSDefaultRunLoopMode(Cocoa)<br>kCFRunLoopDefaultMode(Core Foundation) | 默认模式是用于大多数操作的模式。大多数情况下，应该使用此模式启动run loop和配置输入源。 |
+| Connection | NSConnectionReplyMode (Cocoa) | Cocoa将此模式与`NSConnection`对象一起使用来监听应答。很少需要自己使用这种模式。 |
+| Modal | NSModalPanelRunLoopMode (Cocoa) | Cocoa使用这种模式来识别用于modal panel的事件。 |
+| Event tracking | NSEventTrackingRunLoopMode (Cocoa) | Cocoa使用这种模式来限定在鼠标拖拽循环和其他类型的用户界面跟踪循环期间传入的事件。 |
+| Common modes | NSRunLoopCommonModes (Cocoa)<br>kCFRunLoopCommonModes (Core Foundation) | 这是一个常用模式的可配置组。将输入源与此模式相关联也会将其与组中的每个模式相关联。对于Cocoa应用程序，默认情况下，此集合包含默认、 模态和事件跟踪模式。Core Foundation最初只包含默认模式。可以使用`CFRunLoopAddCommonMode`函数将自定义模式添加到该集合中。 |
+
+
 
