@@ -392,4 +392,29 @@ OS X和iOS为在每个线程中实现run loop提供了内置支持。应用程�
 }
 ```
 
+# 线程编程指南 -- Run Loop
+
+Run loop（运行循环）是与线程相关的基础架构的一部分。run loop是一个用于调度工作和协调到达事件的接收的事件处理循环。run loop的目的是在有工作做时让线程忙碌，并在没有工作可做时让线程进入休眠状态。
+
+Run loop管理不是完全自动的，必须设计线程代码以便在适当的时间启动run loop并响应传入的事件。Cocoa和Core Foundation都提供了run loop对象来帮助我们配置和管理线程的run loop。应用程序不需要明确创建run loop对象，每个线程（包括应用程序的主线程）都有一个关联的run loop对象。但是，只有辅助线程需要显式运行其run loop。作为应用程序启动过程的一部分，应用程序框架自动设置并在主线程上运行run loop。
+
+以下内容提供了有关run loop的更多信息以及如何为应用程序配置run loop。有关run loop对象的更多信息，请参看[NSRunLoop Class Reference](https://developer.apple.com/documentation/foundation/nsrunloop)和[CFRunLoop Reference](https://developer.apple.com/documentation/corefoundation/cfrunloop)。
+
+## Run Loop详解
+
+Run loop是一个线程进入循环，使用它来运行事件处理程序以便响应传入的事件。我们的代码提供了用于实现run loop的实际循环部分的控制语句——换句话说， 我们的代码提供了驱动run loop的while或者for循环。在循环中，使用run loop对象来“运行”用来接收事件和调用已安装的处理程序的事件处理代码。
+
+Run loop从两种不同类型的源中接收事件。输入源传递异步事件，通常是来自另一个线程或不同应用程序的消息。定时器源传递同步事件，发生在特定的时间或间隔重复。这两种类型的源都使用应用程序特定的处理程序来处理到达的事件。
+
+下图显示了run loop和各种源的概念上的结构。输入源传递异步事件给对应的处理程序，并导致`runUntilDate:`方法（在线程关联的`NSRunloop`对象上调用）退出。定时器源传递事件到其处理程序例程，但是不会导致run loop退出。
+
+![Structure of a run loop and its sources.png](https://upload-images.jianshu.io/upload_images/4906302-383c2c603bbf18b8.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+除了处理输入的源之外，run loop还会生成有关run loop行为的通知。已注册的运行循环观察者能够接收通知，并使用它们对线程执行附加处理。使用Core Foundation来在线程上安装运行循环观察者。
+
+以下部分提供了与run loop的组件和它们的运转模式相关的更多信息，还描述了处理事件期间在不同时间生成的通知。
+
+### Run Loop模式
+
+run loop模式是要监听的输入源和定时器的集合和要通知的运行循环观察者的集合。
 
