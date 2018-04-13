@@ -504,7 +504,14 @@ Cocoa和Core Foundation为使用与端口相关的对象创建的基于端口的
 
 有关如何创建run loop观察者的示例，请参看[配置Run Loop](turn)。有关参考信息，请参看[CFRunLoopObserver](https://developer.apple.com/documentation/corefoundation/cfrunloopobserver)。
 
+### Run Loop事件的序列
 
+每当运行线程的run loop时，它都会处理等待的事件，并为任何附加的观察者生成通知。其执行顺序非常具体，如下所示：
+1. 通知观察者已经进入run loop。
+2. 通知观察者任何准备好的定时器即将触发。
+3. 通知观察者任何不是基于端口的输入源即将触发。
+4. 触发任何可以触发的不是基于端口的输入源。
+5. 如果一个基于端口的输入源已经准备好并且正在等待触发，立即处理该事件。跳到第9步。
 
 
 
