@@ -410,19 +410,19 @@ Run loop从两种不同类型的源中接收事件。输入源传递异步事件
 
 ![Structure of a run loop and its sources.png](https://upload-images.jianshu.io/upload_images/4906302-383c2c603bbf18b8.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
-除了处理输入的源之外，run loop还会生成有关run loop行为的通知。已注册的运行循环观察者能够接收通知，并使用它们对线程执行附加处理。使用Core Foundation来在线程上安装运行循环观察者。
+除了处理输入的源之外，run loop还会生成有关run loop行为的通知。已注册的run loop观察者能够接收通知，并使用它们对线程执行附加处理。使用Core Foundation来在线程上安装run loop观察者。
 
 以下部分提供了与run loop的组件和它们的运转模式相关的更多信息，还描述了处理事件期间在不同时间生成的通知。
 
 ### Run Loop模式
 
-Run loop模式是要监听的输入源和定时器的集合和要通知的运行循环观察者的集合。每次运行run loop时，都要明确或隐式地指定要运行的特定“模式”。在运行循环过程中，只监听与该模式有关的源并允许其传递事件。（同样，只有与该模式相关的观察者才会收到run loop的进度的通知。）与其他模式关联的源会保留任何新事件，直到随后已适当的模式通过循环为止。
+Run loop模式是要监听的输入源和定时器的集合和要通知的run loop观察者的集合。每次运行run loop时，都要明确或隐式地指定要运行的特定“模式”。在运行循环过程中，只监听与该模式有关的源并允许其传递事件。（同样，只有与该模式相关的观察者才会收到run loop的进度的通知。）与其他模式关联的源会保留任何新事件，直到随后已适当的模式通过循环为止。
 
-在代码中，可以通过名称来识别模式。Cocoa和Core Foundation都定义了一个默认模式和几个常用模式，以及用于在代码中指定这些模式的字符串。可以通过简单地为模式名称指定一个自定义字符串来自定义模式。虽然分配给自定义模式的名称是任意的，但这些模式的内容不是。必须确保将一个或多个输入源、 定时器或运行循环观察者添加到为它们创建的任何模式中，使它们生效。
+在代码中，可以通过名称来识别模式。Cocoa和Core Foundation都定义了一个默认模式和几个常用模式，以及用于在代码中指定这些模式的字符串。可以通过简单地为模式名称指定一个自定义字符串来自定义模式。虽然分配给自定义模式的名称是任意的，但这些模式的内容不是。必须确保将一个或多个输入源、 定时器或run loop观察者添加到为它们创建的任何模式中，使它们生效。
 
 可以使用模式在通过run loop的特定关口期间过滤掉不需要的源中的事件。大多数情况下，需要在系统定义的“默认”模式下运行run loop。但是，modal panel可能会以“模态”模式运行run loop。在此模式下，只有与modal panel相关的源才会将事件传递给线程。对于辅助线程，可以使用自定义模式来防止低优先级的源在时间紧张的运作期间传递事件。
 
-> **注意**：模式基于事件源来进行区分，而不是事件的类型。例如，不会使用模式来仅仅匹配鼠标按下事件或者仅匹配键盘事件。可以使用模式来监听不同的端口集、 暂时暂停定时器或者更改当前正在监听的源和运行循环观察者。
+> **注意**：模式基于事件源来进行区分，而不是事件的类型。例如，不会使用模式来仅仅匹配鼠标按下事件或者仅匹配键盘事件。可以使用模式来监听不同的端口集、 暂时暂停定时器或者更改当前正在监听的源和run loop观察者。
 
 下表列出了Cocoa和Core Foundation定义的标准模式以及何时使用该模式的说明。名称列列出了用于在代码中指定模式的实际常量。
 
@@ -462,6 +462,49 @@ Cocoa和Core Foundation为使用与端口相关的对象创建的基于端口的
 #### Cocoa执行选择器源（Cocoa Perform Selector Sources）
 
 除了基于端口的源之外，Cocoa还定义了一个自定义输入源，允许我们在任何线程上执行选择器（Selector）。与基于端口的源一样，执行选择器请求在目标线程上被序列化，从而避免了在一个线程上运行多个方法时可能引发的许多同步问题。与基于端口的源不同，执行选择器源在执行其选择器后会将自己从run loop中移除。
+
+> **注意**：在OS X v10.5之前，执行选择器源主要用于将消息发送到主线程，但在OS X v10.5及更高版本和iOS中，可以使用它们向任何线程发送消息。
+
+在另一个线程上执行选择器时，目标线程必须具有激活的run loop。对于创建的线程，这意味着会等待执行选择器，直到我们明确地启动run loop。由于主线程启动自己的run loop，因此只要应用程序调用应用程序委托的`applicationDidFinishLaunching:`方法后，就可以在主线程上发出调用。run loop会在每次通过循环时处理所有排队的执行选择器调用，而不是在每次循环迭代期间只处理一个。
+
+下表列出了`NSObject`中定义的可用于在其他线程上执行选择器的方法。由于这些方法实在`NSObject`中声明的，所以可以在任何有权访问Objective-C对象的线程中使用它们，包括POSIX线程。这些方法实际上不会创建一个新线程来执行选择器。
+
+| Methods | Description |
+|------------|--------------|
+|`performSelectorOnMainThread:withObject:waitUntilDone:`<br>`performSelectorOnMainThread:withObject:waitUntilDone:modes:` | 在该线程的下一个run loop周期中执行应用程序主线程上的指定选择器。这些方法使我们可以选择阻塞当前线程，直到选择器被执行。 |
+| `performSelector:onThread:withObject:waitUntilDone:`<br>`performSelector:onThread:withObject:waitUntilDone:modes:` | 在任何线程上执行指定的选择器。这些方法使我们可以选择阻塞当前线程，直到选择器被执行。 |
+| `performSelector:withObject:afterDelay:`<br>`performSelector:withObject:afterDelay:inModes:` | 在下一个run loop周期中和可选的延迟周期之后，在当前线程上执行指定的选择器。由于会等到下一个run loop周期执行选择器，所以这些方法会从当前正在执行的代码中提供一个自动微小延迟。多个排队的选择器按照它们排队的顺序依次执行。 |
+| `cancelPreviousPerformRequestsWithTarget:`<br>`cancelPreviousPerformRequestsWithTarget:selector:object:` | 允许我们取消使用`performSelector:withObject:afterDelay:`或者`performSelector:withObject:afterDelay:inModes:`方法发送给当前线程的消息。 |
+
+有关每种方法的详细信息，请参看[NSObject Class Reference](https://developer.apple.com/documentation/objectivec/nsobject)。
+
+### 定时器源
+
+定时器源在未来的预设时间同步传递事件给我们的线程。定时器是线程通知自己做某事的一种方式。例如，搜索输入框可以使用定时器在用户连续敲击键盘之间经过一段时间后启动自动搜索。使用此延迟时间使用户有机会在开始搜索之前尽可能多地输入所需的搜索字符串。
+
+虽然定时器源生成基于时间的通知，但定时器不是基于实时机制的。与输入源一样，定时器与与run loop的特定模式相关联。如果定时器为处于当前正在被run loop监听的模式下，则只有在定时器支持的其中一种模式下运行run loop时，才会启动定时器。同样，如果在run loop处于执行处理程序例程的过程中启动定时器，则定时器会等到下一次通过run loop时调用其处理程序例程。如果run loop根本没有运行，则定时器永远不会启动。
+
+可以将定时器配置为仅生成一次或重复生成事件。重复定时器会基于调度的触发时间自动重新调度其本身，而不是基于实际的触发时间。例如，如果定时器计划在特定时间以及之后每隔5秒触发一次，则即使实际触发时间延迟了，计划的触发时间也会始终以原来的5秒时间间隔进行。如果触发时间延迟太多以至于错过了一个或多个预定的触发时间，则定时器在错过的时间段内仅被触发一次。在错过的时间触发后，定时器重新调度下一个预定的触发时间。
+
+有关配置定时器源的更多信息，请参看[配置定时器源](turn)。有关参考信息，请参看[NSTimer Class Reference](https://developer.apple.com/documentation/foundation/timer)或者[CFRunLoopTimer Reference](https://developer.apple.com/documentation/corefoundation/cfrunlooptimer-rhk)。
+
+### Run Loop观察者
+
+与当一个对应的异步或同步事件发生时就会触发的源相比，run loop观察者会在run loop本身执行过程中在特定位置触发。可以使用run loop观察者来准备好线程以处理给定的事件，或者在线程进入休眠之前准备好线程。可以将run loop观察者与run loop中的以下事件相关联：
+- 进入run loop。
+- run loop即将处理定时器时。
+- run loop即将处理输入源时。
+- run loop即将进入休眠状态时。
+- run loop被唤醒但在处理唤醒它的事件之前。
+- 退出run loop。
+
+可以使用Core Foundation将run loop观察者添加到引用程序中。要创建run loop观察者，可以创建`CFRunLoopObserverRef`不透明类型的新实例。此类型会跟踪我们的自定义回调函数以及它感兴趣的活动。
+
+与定时器类似，run loop观察者可以使用一次或者重复使用。一次性的观察者在其触发后会将其自身从run loop中移除，而重复性的观察者仍然会存在于run loop中。在创建观察者时，可以指定其是运行一次还是反复运行。
+
+有关如何创建run loop观察者的示例，请参看[配置Run Loop](turn)。有关参考信息，请参看[CFRunLoopObserver](https://developer.apple.com/documentation/corefoundation/cfrunloopobserver)。
+
+
 
 
 
