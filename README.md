@@ -211,7 +211,7 @@ NSThread* myThread = [[NSThread alloc] initWithTarget:self selector:@selector(my
 
 如果我们有一个其当前线程正在运行的`NSThread`对象，则一种发送消息到该线程的方法是使用应用程序中几乎任何对象的`performSelector:onThread:withObject:waitUntilDone:`方法。在OS X v10.5中引入了对线程（主线程除外）执行选择器的支持，这是在线程之间进行通信的便捷方式。（此支持在iOS中也可用。）使用该技术发送的消息由其他线程直接执行，作为目标线程正常运行循环处理的一部分。（当然，这意味着目标线程必须在其run loop中运行。）当我们以这种方式进行通信时，可能仍然需要某种形式的同步，但它比在线程之间设置端口要简单。
 
-> **注意**：虽然`performSelector:onThread:withObject:waitUntilDone:`方法适用于线程之间的偶尔通信，但不应该使用该方法来处理线程之间的时间紧张或频繁的通信。
+> **注意**：虽然`performSelector:onThread:withObject:waitUntilDone:`方法适用于线程之间的偶尔通信，但不应该使用该方法来处理线程之间的时间至关重要或频繁的通信。
 
 ### 使用 POSIX 线程
 
@@ -420,7 +420,7 @@ Run loop模式是要监听的输入源和定时器的集合和要通知的run lo
 
 在代码中，可以通过名称来识别模式。Cocoa和Core Foundation都定义了一个默认模式和几个常用模式，以及用于在代码中指定这些模式的字符串。可以通过简单地为模式名称指定一个自定义字符串来自定义模式。虽然分配给自定义模式的名称是任意的，但这些模式的内容不是。必须确保将一个或多个输入源、 定时器或run loop观察者添加到为它们创建的任何模式中，使它们生效。
 
-可以使用模式在通过run loop的特定关口期间过滤掉不需要的源中的事件。大多数情况下，需要在系统定义的“默认”模式下运行run loop。但是，modal panel可能会以“模态”模式运行run loop。在此模式下，只有与modal panel相关的源才会将事件传递给线程。对于辅助线程，可以使用自定义模式来防止低优先级的源在时间紧张的运作期间传递事件。
+可以使用模式在通过run loop的特定关口期间过滤掉不需要的源中的事件。大多数情况下，需要在系统定义的“默认”模式下运行run loop。但是，modal panel可能会以“模态”模式运行run loop。在此模式下，只有与modal panel相关的源才会将事件传递给线程。对于辅助线程，可以使用自定义模式来防止低优先级的源在时间至关重要的操作期间传递事件。
 
 > **注意**：模式基于事件源来进行区分，而不是事件的类型。例如，不会使用模式来仅仅匹配鼠标按下事件或者仅匹配键盘事件。可以使用模式来监听不同的端口集、 暂时暂停定时器或者更改当前正在监听的源和run loop观察者。
 
@@ -504,14 +504,98 @@ Cocoa和Core Foundation为使用与端口相关的对象创建的基于端口的
 
 有关如何创建run loop观察者的示例，请参看[配置Run Loop](turn)。有关参考信息，请参看[CFRunLoopObserver](https://developer.apple.com/documentation/corefoundation/cfrunloopobserver)。
 
-### Run Loop事件的序列
+### Run Loop事件的顺序
 
-每当运行线程的run loop时，它都会处理等待的事件，并为任何附加的观察者生成通知。其执行顺序非常具体，如下所示：
+每当运行线程的run loop时，它都会处理未决事件，并为任何附加的观察者生成通知。其执行这些操作的顺序非常具体，如下所示：
 1. 通知观察者已经进入run loop。
 2. 通知观察者任何准备好的定时器即将触发。
 3. 通知观察者任何不是基于端口的输入源即将触发。
 4. 触发任何可以触发的不是基于端口的输入源。
-5. 如果一个基于端口的输入源已经准备好并且正在等待触发，立即处理该事件。跳到第9步。
+5. 如果一个基于端口的输入源已经准备好并且正在等待触发，则立即处理该事件。跳到第9步。
+6. 通知观察者线程即将进入休眠状态。
+7. 将线程置于休眠状态，直到发生以下事件之一：
+    - 与基于端口的输入源相关的事件到达。
+    - 定时器触发。
+    - 为run loop设置的超时值已过期。
+    - run loop被明确地唤醒。
+8. 通知观察者线程刚被唤醒。
+9. 处理未决事件。
+    - 如果用户定义的定时器触发，处理定时器事件并重新启动循环。跳到步骤2。
+    - 如果输入源触发，则传递事件。
+    - 如果run loop被显式唤醒但尚未超时，则重新启动循环。跳到第2步。
+10. 通知观察者已经退出run loop。
+
+由于定时器和输入源的观察者通知会在那些事件实际发生之前就被发送，所以通知的时间与实际事件的事件之间可能存在间隔。如果这些事件之间的时间至关重要，则可以使用休眠和从休眠中唤醒的通知来帮助将实际事件之间的时间关联起来。
+
+由于定时器和其他周期性事件是在运行run loop时被传递的，所以要规避会扰乱这些事件的传递的循环。会发生这种行为的典型示例就是通过进入一个循环并从应用程序中重复请求事件来实现鼠标跟踪例程。因为我们的代码会直接捕获事件而不是让应用程序正常调度这些事件，所以在鼠标跟踪例程退出并将控制权返回给应用程序之前，激活的定时器将无法触发。
+
+使用run loop对象能够显式地唤醒run loop，其他事件也可能导致run loop被唤醒。例如，添加一个不是基于端口的输入源会唤醒run loop以便输入源能够被立即处理，而不是等待直到发生其他事件。
+
+## 何时使用Run Loop？
+
+唯一需要我们明确运行run loop的时候是为应用程序创建辅助线程时。应用程序主线程的run loop是基础架构中至关重要的一部分。因此，应用程序框架提供运行主应用程序循环并自动启动该循环的代码。iOS中的`UIApplication`（或者OS X中的`NSApplication`）的运行方法启动应用程序的主循环，作为正常启动顺序的一部分。如果使用Xcode模版项目来创建应用程序，则不应该显示调用这些例程。
+
+对于辅助线程，我们需要确定是否run loop。如果需要，则自行配置并启动run loop。如果使用线程执行一些长时间运行且预先确定的任务，则应该避免启动run loop。run loop适用于需要与线程进行更多交互的情况。例如，如果打算执行以下任何操作，则需要启动run loop：
+- 使用端口或者自定义输入源来与其他线程进行通信。
+- 在线程中使用定时器。
+- 使用Cocoa应用程序中的任何一种`performSelector…`方法。
+- 让线程执行周期任务。
+
+如果选择使用run loop，则其配置和设置非常简单。像所有线程编程一样，应当有一个机会来在适当的情况下退出辅助线程。通过自然退出线程而不是强制终止一个线程总是更好。有关如何配置和退出run loop的信息，请参看[使用Run Loop对象](turn)。
+
+## 使用Run Loop对象
+
+run loop对象提供了添加输入源、定时器和run loop观察者到run loop并启动run loop的主要接口。每个线程都一个与之关联的run loop对象。在Cocoa中，这个对象是`NSRunLoop`类的一个实例。在低级应用程序中，它是一个指向`CFRunLoopRef`不透明类型的指针。
+
+### 获取Run Loop对象
+
+要获取当前线程的run loop，请使用以下选项之一：
+- 在Cocoa应用程序中，使用`NSRunLoop`的`currentRunLoop`类方法来获取`NSRunLoop`对象。
+- 使用`CFRunLoopGetCurrent`函数。
+
+尽管它们不是免费桥接类型，但在需要时，可以从`NSRunLoop`对象获取`CFRunLoopRef`不透明类型。`NSRunLoop`类定义了一个`getCFRunLoop`方法，该方法返回可以传递给Core Foundation例程的`CFRunLoopRef`类型。因为两个对象都引用同一个run loop，所以可以根据需要混合调用`NSRunLoop`对象和`CFRunLoopRef`不透明类型。
+
+### 配置Run Loop
+
+在辅助线程上运行run loop之前，必须至少添加一个输入源或定时器。如果run loop没有任何要监听的源，当我们尝试运行run loop时，它会立即退出。有关如何将源添加到run loop的示例，请参看[配置Run Loop源](turn)。
+
+除了安装源之外，还可以安装run loop观察者并使用它们来监听run loop的不同执行阶段。要安装run loop观察者，需要创建一个`CFRunLoopObserverRef`不透明类型并使用`CFRunLoopAddObserver`函数将其添加到run loop。run loop观察者必须使用Core Foundation创建，即使对于Cocoa应用程序也是如此。
+
+以下代码显示了一个将run loop观察者附加到其run loop的线程的主要例程。该示例的目的是展示如何创建run loop观察者，因此代码简单地设置了一个run loop观察者来监听所有run loop活动。基础处理程序例程（未显示）在run loop处理定时器请求时简单地记录了run loop活动。
+```
+- (void)threadMain
+{
+    // The application uses garbage collection, so no autorelease pool is needed.
+    NSRunLoop* myRunLoop = [NSRunLoop currentRunLoop];
+
+    // Create a run loop observer and attach it to the run loop.
+    CFRunLoopObserverContext  context = {0, self, NULL, NULL, NULL};
+    CFRunLoopObserverRef    observer = CFRunLoopObserverCreate(kCFAllocatorDefault,
+    kCFRunLoopAllActivities, YES, 0, &myRunLoopObserver, &context);
+
+    if (observer)
+    {
+        CFRunLoopRef    cfLoop = [myRunLoop getCFRunLoop];
+        CFRunLoopAddObserver(cfLoop, observer, kCFRunLoopDefaultMode);
+    }
+
+    // Create and schedule the timer.
+    [NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:@selector(doFireTimer:) userInfo:nil repeats:YES];
+
+    NSInteger    loopCount = 10;
+    do
+    {
+        // Run the run loop 10 times to let the timer fire.
+        [myRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:1]];
+        loopCount--;
+        
+    }while (loopCount);
+}
+```
+为长期存活的线程配置run loop时，最好添加至少一个输入源来接收消息。尽管仅仅附加一个定时器就能进入run loop，但是一旦定时器触发，定时器通常会失效，然后会导致run loop退出。附加重复定时器可以使run loop长时间运行，但是这意味着要定期触发定时器来唤醒线程，这实际上是另一种轮询方式。相反，输入源会等待事件发生，并让线程休眠直到发生事件。
+
+### 启动Run Loop
+
 
 
 
