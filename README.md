@@ -644,7 +644,18 @@ run loop对象提供了添加输入源、定时器和run loop观察者到run loo
 有两种方法能使run loop在其处理事件之前退出：
 - 配置run loop以超时值运行。
 - 告知run loop退出。
-- 
+
+如果我们能够管理超时值，那么使用超时值肯定是首选。指定超时值可以让run loop完成所有正常处理，包括在退出之前将通知发送给run loop观察者。
+
+使用`CFRunLoopStop`函数显式地停止运行run loop会产生类似于超时的结果。run loop会发送出任何其余的run loop通知，然后退出。不同的是，可以在对无条件启动的run loop使用此技术。
+
+虽然移除run loop的输入源和定时器也可能导致run loop退出，但这并不是停止run loop的可靠方法。一些系统例程将输入源添加到run loop以处理所需的事件。由于我们的代码可能无法知道这些输入源，所有就无法移除它们，这样run loop是不会退出的。
+
+### 线程安全和Run Loop对象
+
+线程安全取决于我们使用哪个API来操作run loop。Core Foundation中的函数通常是线程安全的，可以在任何线程中调用。但是，如果我们正在执行更改run loop配置的操作，则尽可能在持有该run loop的线程中执行此操作。
+
+
 
 
 
