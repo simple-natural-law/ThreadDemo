@@ -406,7 +406,7 @@ Run loop是一个线程进入循环，使用它来运行事件处理程序以便
 
 Run loop从两种不同类型的源中接收事件。输入源传递异步事件，通常是来自另一个线程或不同应用程序的消息。定时器源传递同步事件，发生在特定的时间或间隔重复。这两种类型的源都使用应用程序特定的处理程序来处理到达的事件。
 
-下图显示了run loop和各种源的概念上的结构。输入源传递异步事件给对应的处理程序，并导致`runUntilDate:`方法（在线程关联的`NSRunloop`对象上调用）退出。定时器源传递事件到其处理程序例程，但是不会导致run loop退出。
+下图显示了run loop和各种源的概念上的结构。输入源传递异步事件给对应的处理程序，并导致`runUntilDate:`方法（在线程关联的`NSRunloop`对象上调用）退出。定时器源传递事件到其处理例程，但是不会导致run loop退出。
 
 ![Structure of a run loop and its sources.png](https://upload-images.jianshu.io/upload_images/4906302-383c2c603bbf18b8.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
@@ -447,7 +447,7 @@ Run loop模式是要监听的输入源和定时器的集合和要通知的run lo
 
 Cocoa和Core Foundation为使用与端口相关的对象创建的基于端口的输入源提供了内置支持。例如，在Cocoa中，根本不需要直接创建输入源。只需要创建一个端口对象，并使用`NSPort`类的方法将该端口添加到run loop。端口对象为我们处理所需输入源的创建和配置。
 
-在Core Foundation中，必须手动创建端口及其run loop源。在这两种情况下，都使用与端口不透明类型关联的函数（CFMachPortRef，CFMessagePortRef或者CFSocketRef）来创建对应的对象。
+在Core Foundation中，必须手动创建端口及其run loop源。在这两种情况下，都使用与端口不透明类型关联的函数（`CFMachPortRef`，`CFMessagePortRef`或者`CFSocketRef`）来创建对应的对象。
 
 有关如何设置和配置基于自定义端口的源的示例，请参看[配置基于端口的输入源](turn)。
 
@@ -482,7 +482,7 @@ Cocoa和Core Foundation为使用与端口相关的对象创建的基于端口的
 
 定时器源在未来的预设时间同步传递事件给我们的线程。定时器是线程通知自己做某事的一种方式。例如，搜索输入框可以使用定时器在用户连续敲击键盘之间经过一段时间后启动自动搜索。使用此延迟时间使用户有机会在开始搜索之前尽可能多地输入所需的搜索字符串。
 
-虽然定时器源生成基于时间的通知，但定时器不是基于实时机制的。与输入源一样，定时器与与run loop的特定模式相关联。如果定时器为处于当前正在被run loop监听的模式下，则只有在定时器支持的其中一种模式下运行run loop时，才会启动定时器。同样，如果在run loop处于执行处理程序例程的过程中启动定时器，则定时器会等到下一次通过run loop时调用其处理程序例程。如果run loop根本没有运行，则定时器永远不会启动。
+虽然定时器源生成基于时间的通知，但定时器不是基于实时机制的。与输入源一样，定时器与与run loop的特定模式相关联。如果定时器为处于当前正在被run loop监听的模式下，则只有在定时器支持的其中一种模式下运行run loop时，才会启动定时器。同样，如果在run loop处于执行处理例程的过程中启动定时器，则定时器会等到下一次通过run loop时调用其处理例程。如果run loop根本没有运行，则定时器永远不会启动。
 
 可以将定时器配置为仅生成一次或重复生成事件。重复定时器会基于调度的触发时间自动重新调度其本身，而不是基于实际的触发时间。例如，如果定时器计划在特定时间以及之后每隔5秒触发一次，则即使实际触发时间延迟了，计划的触发时间也会始终以原来的5秒时间间隔进行。如果触发时间延迟太多以至于错过了一个或多个预定的触发时间，则定时器在错过的时间段内仅被触发一次。在错过的时间触发后，定时器重新调度下一个预定的触发时间。
 
@@ -561,7 +561,7 @@ run loop对象提供了添加输入源、定时器和run loop观察者到run loo
 
 除了安装源之外，还可以安装run loop观察者并使用它们来监听run loop的不同执行阶段。要安装run loop观察者，需要创建一个`CFRunLoopObserverRef`不透明类型并使用`CFRunLoopAddObserver`函数将其添加到run loop。run loop观察者必须使用Core Foundation创建，即使对于Cocoa应用程序也是如此。
 
-以下代码显示了一个将run loop观察者附加到其run loop的线程的主要例程。该示例的目的是展示如何创建run loop观察者，因此代码简单地设置了一个run loop观察者来监听所有run loop活动。基础处理程序例程（未显示）在run loop处理定时器请求时简单地记录了run loop活动。
+以下代码显示了一个将run loop观察者附加到其run loop的线程的主要例程。该示例的目的是展示如何创建run loop观察者，因此代码简单地设置了一个run loop观察者来监听所有run loop活动。基础处理例程（未显示）在run loop处理定时器请求时简单地记录了run loop活动。
 ```
 - (void)threadMain
 {
@@ -637,7 +637,7 @@ run loop对象提供了添加输入源、定时器和run loop观察者到run loo
     // Clean up code here. Be sure to release any allocated autorelease pools.
 }
 ```
-还可以递归运行一个run loop。换句话讲，可以调用`CFRunLoopRun`、`CFRunLoopRunInMode`或者`NSRunLoop`的方法来在输入源或定时器的处理程序例程中启动run loop。这样做时，可以使用任何需要的run loop模式来运行嵌套run loop，包括外部run loop使用的模式。
+还可以递归运行一个run loop。换句话讲，可以调用`CFRunLoopRun`、`CFRunLoopRunInMode`或者`NSRunLoop`的方法来在输入源或定时器的处理例程中启动run loop。这样做时，可以使用任何需要的run loop模式来运行嵌套run loop，包括外部run loop使用的模式。
 
 ### 退出Run Loop
 
@@ -649,13 +649,107 @@ run loop对象提供了添加输入源、定时器和run loop观察者到run loo
 
 使用`CFRunLoopStop`函数显式地停止运行run loop会产生类似于超时的结果。run loop会发送出任何其余的run loop通知，然后退出。不同的是，可以在对无条件启动的run loop使用此技术。
 
-虽然移除run loop的输入源和定时器也可能导致run loop退出，但这并不是停止run loop的可靠方法。一些系统例程将输入源添加到run loop以处理所需的事件。由于我们的代码可能无法知道这些输入源，所有就无法移除它们，这样run loop是不会退出的。
+虽然移除run loop的输入源和定时器也可能导致run loop退出，但这并不是停止run loop的可靠方法。一些系统例程会将输入源添加到run loop以处理所需的事件。由于我们的代码可能无法知道这些输入源，所有就无法移除它们，这样run loop是不会退出的。
 
 ### 线程安全和Run Loop对象
 
-线程安全取决于我们使用哪个API来操作run loop。Core Foundation中的函数通常是线程安全的，可以在任何线程中调用。但是，如果我们正在执行更改run loop配置的操作，则尽可能在持有该run loop的线程中执行此操作。
+线程安全取决于我们使用哪个API来操作run loop。Core Foundation中的函数通常是线程安全的，可以在任何线程中调用。但是，如果正在执行更改run loop配置的操作，则尽可能在持有该run loop的线程中执行此操作。
 
+Cocoa中`NSRunLoop`类并不像其在Core Foundation中的副本那样是线程安全的。如果使用`NSRunLoop`类来修改run loop，则应该仅仅只在持有该run loop的线程中这样做。在不同的线程中将输入源或定时器添加到run loop可能会导致代码崩溃或以意外的方式运行。
 
+## 配置Run Loop源
+
+以下部分显示了如何在Cocoa和Core Foundation中设置不同类型的输入源的示例。
+
+### 定义自定义输入源
+
+创建自定义输入源涉及到以下内容：
+- 想让输入源处理的信息。
+- 能让感兴趣的客户端知道如何与输入源联系的调度例程。
+- 能用于执行任何客户端发送的请求的处理例程。
+- 能让输入源无效的取消例程。
+
+要创建一个自定义输入源来处理自定义信息，应该灵活设计实际的配置。调度、处理和取消例程是用于自定义输入源的关键例程。然而，输入源行为的其余部分的大部分都发生在这些处理例程之外。例如，为传递数据到输入源和将输入源的存在传达给其他线程定义机制是由我们自己决定的。
+
+下图显示了自定义输入源的示例配置。在本示例中，应用程序的主线程保持对输入源、该输入源的自定义命令缓冲区以及安装该输入源的run loop的引用。当主线程有一个任务想要切换到工作线程时，它将命令和工作线程启动该任务所需的任何信息一起发送到命令缓冲区。（因为主线程和工作线程的输入源都可以访问命令缓冲区，所以访问必须同步）。一旦命令发送，主线程就会发送信号给输入源并唤醒工作线程的run loop。在接收到唤醒命令后，run loop会调用输入源的处理程序，它会处理在命令缓冲区中找到的命令。
+
+![Operating a custom input source.png](http://upload-images.jianshu.io/upload_images/4906302-6f9b7ed6a633df16.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+以下各节将解释上图中自定义输入源的实现，并显示需要实现的关键代码。
+
+#### 定义输入源
+
+定义自定义输入源需要使用Core Foundation例程来配置run loop源并将其附加到run loop。虽然基础处理程序是基于C语言的函数，但是这并不妨碍我们为这些函数编写包装器并使用Objective-C或者C++来实现代码的主体。
+
+上图中介绍的输入源使用Objective-C对象来管理命令缓冲区并与run loop进行协调。以下代码显示了这个对象的定义。RunLoopSource对象管理命令缓冲区，并使用该缓冲区接收来自其他线程的消息。以下代码还显示了RunLoopContext对象的定义，该对象实际上是一个容器对象，用于将RunLoopContext对象和run loop引用传递给应用程序的主线程。
+```
+@interface RunLoopSource : NSObject
+{
+    CFRunLoopSourceRef runLoopSource;
+    NSMutableArray* commands;
+}
+
+- (id)init;
+- (void)addToCurrentRunLoop;
+- (void)invalidate;
+
+// Handler method
+- (void)sourceFired;
+
+// Client interface for registering commands to process
+- (void)addCommand:(NSInteger)command withData:(id)data;
+- (void)fireAllCommandsOnRunLoop:(CFRunLoopRef)runloop;
+
+@end
+
+// These are the CFRunLoopSourceRef callback functions.
+void RunLoopSourceScheduleRoutine (void *info, CFRunLoopRef rl, CFStringRef mode);
+void RunLoopSourcePerformRoutine (void *info);
+void RunLoopSourceCancelRoutine (void *info, CFRunLoopRef rl, CFStringRef mode);
+
+// RunLoopContext is a container object used during registration of the input source.
+@interface RunLoopContext : NSObject
+{
+    CFRunLoopRef        runLoop;
+    RunLoopSource*        source;
+}
+@property (readonly) CFRunLoopRef runLoop;
+@property (readonly) RunLoopSource* source;
+
+- (id)initWithSource:(RunLoopSource*)src andLoop:(CFRunLoopRef)loop;
+@end
+```
+虽然Objective-C代码管理输入源的自定义数据和将输入源附加到run loop所需要的基于C语言的回调函数。当将输入源实际附加到run loop时，这些函数中的第一个会被调用，如下所示。由于此输入源只有一个客户端（主线程），因此它使用RunLoopSourceScheduleRoutine函数发送消息来在该线程上向应用程序委托对象注册自己。当委托对象想要与输入源通信时，它使用RunLoopContext对象中的信息来执行此操作。
+```
+void RunLoopSourceScheduleRoutine (void *info, CFRunLoopRef rl, CFStringRef mode)
+{
+    RunLoopSource* obj = (RunLoopSource*)info;
+    AppDelegate*   del = [AppDelegate sharedAppDelegate];
+    RunLoopContext* theContext = [[RunLoopContext alloc] initWithSource:obj andLoop:rl];
+
+    [del performSelectorOnMainThread:@selector(registerSource:) withObject:theContext waitUntilDone:NO];
+}
+```
+最重要的回调例程之一是用于在输入源发送信号时处理自定义数据的回调例程。以下代码显示了与RunLoopSource对象关联的RunLoopSourcePerformRoutine回调。该函数只是将执行工作的请求发送给sourceFired方法，该方法随后会处理命令缓冲区中存在的任何命令。
+```
+void RunLoopSourcePerformRoutine (void *info)
+{
+    RunLoopSource*  obj = (RunLoopSource*)info;
+    [obj sourceFired];
+}
+```
+如果使用`CFRunLoopSourceInvalidate`函数将输入源从其run loop中移除，则系统将调用输入源的取消例程。可以使用此例程来通知客户端其输入源不再有效，并且应该删除对它的任何引用。以下代码显示了使用RunLoopSource对象注册的取消回调例程。该函数将另一个RunLoopContext对象发送给应用程序委托对象，但是这次会要求委托对象删除对run loop源的引用。
+```
+void RunLoopSourceCancelRoutine (void *info, CFRunLoopRef rl, CFStringRef mode)
+{
+    RunLoopSource* obj = (RunLoopSource*)info;
+    AppDelegate* del = [AppDelegate sharedAppDelegate];
+    RunLoopContext* theContext = [[RunLoopContext alloc] initWithSource:obj andLoop:rl];
+
+    [del performSelectorOnMainThread:@selector(removeSource:) withObject:theContext waitUntilDone:YES];
+}
+```
+> **提示**：应用程序委托对象的registerSource:和removeSource:方法的代码在[协调输入源的客户端](turn)。
 
 
 
