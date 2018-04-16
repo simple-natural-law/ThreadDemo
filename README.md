@@ -596,6 +596,47 @@ run loop对象提供了添加输入源、定时器和run loop观察者到run loo
 
 ### 启动Run Loop
 
+启动run loop仅仅对于应用程序中的辅助线程才是必要的。run loop必须至少附加一个输入源或者定时器来监听。如果一个都没有，则run loop会立即退出。
+
+启动run loop的方式包括以下几种：
+- 无条件启动。
+- 设定一个时限。
+- 在特定模式下启动。
+
+无条件地进入run loop是最简单地选择，但也是最不可取的。无条件地运行run loop会将线程置于一个永久循环中，这使得我们很难控制run loop本身。可以添加和删除输入源和定时器，但是停止run loop的唯一方法是杀死它。在自定义模式下也是无法运行run loop的。
+
+最好使用超时值运行run loop，而不是无条件地运行run loop。当使用超时值时，run loop会一直运行直到有事件到达或分配的时间到期。如果一个事件到达，则将该事件调度给处理程序进行处理，然后run loop退出。之后，我们的代码可以重新启动run loop来处理下一个事件。如果分配的时间到期，可以简单地重新启动run loop或者使用该时间来完成任何需要的清理工作。
+
+除了超时值之外，还可以使用特定模式运行run loop。模式和超时值不是互斥的，可以同时使用它们来启动run loop。模式限制了传递事件到run loop的源的类型，有关模式的详细信息请参看[Run Loop模式](turn)。
+
+以下代码显示了一个线程的主要入口例程的初略版本。这个示例的关键部分显示了run loop的基本结构。本质上，我们将输入源和定时器添加到run loop，然后重复调用其中一个例程来启动run loop。每次run loop例程返回时，都会检查是否有任何可能导致退出线程的情况。该示例使用Core Foundation的run loop例程，以便它可以检查返回结果并确定run loop退出的原因。如果使用Cocoa并且不需要检查返回值，则也可以使用`NSRunLoop`类的方法以类似的方式来运行run loop。
+```
+- (void)skeletonThreadMain
+{
+    // Set up an autorelease pool here if not using garbage collection.
+    BOOL done = NO;
+
+    // Add your sources or timers to the run loop and do any other setup.
+
+    do
+    {
+        // Start the run loop but return after each source is handled.
+        SInt32    result = CFRunLoopRunInMode(kCFRunLoopDefaultMode, 10, YES);
+
+        // If a source explicitly stopped the run loop, or if there are no
+        // sources or timers, go ahead and exit.
+        if ((result == kCFRunLoopRunStopped) || (result == kCFRunLoopRunFinished))
+        
+            done = YES;
+
+        // Check for any other exit conditions here and set the
+        // done variable as needed.
+    }
+    while (!done);
+
+    // Clean up code here. Be sure to release any allocated autorelease pools.
+}
+```
 
 
 
