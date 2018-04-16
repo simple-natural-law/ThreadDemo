@@ -675,7 +675,7 @@ Cocoa中`NSRunLoop`类并不像其在Core Foundation中的副本那样是线程�
 
 ![Operating a custom input source.png](http://upload-images.jianshu.io/upload_images/4906302-6f9b7ed6a633df16.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
-以下各节将解释上图中自定义输入源的实现，并显示需要实现的关键代码。
+以下各节将解释上图中自定义输入源的实现，并展示需要实现的关键代码。
 
 #### 定义输入源
 
@@ -749,7 +749,34 @@ void RunLoopSourceCancelRoutine (void *info, CFRunLoopRef rl, CFStringRef mode)
     [del performSelectorOnMainThread:@selector(removeSource:) withObject:theContext waitUntilDone:YES];
 }
 ```
-> **提示**：应用程序委托对象的registerSource:和removeSource:方法的代码在[协调输入源的客户端](turn)。
+> **提示**：应用程序委托对象的registerSource:和removeSource:方法的代码在[协调输入源的客户端](turn)中展示。
+
+#### 在Run Loop中安装输入源
+
+以下代码展示了RunLoopSource类的init和addToCurrentRunLoop方法。init方法创建必须被实际附加到run loop的`CFRunLoopSourceRef`不透明类型。它将RunLoopSource对象本身作为上下文信息传递，以便回调例程具有指向该对象的指针。不会安装输入源到run loop直到工作线程调用addToCurrentRunLoop方法，此时将调用RunLoopSourceScheduleRoutine回调函数。一旦输入源被添加到run loop中，线程就可以运行它的run loop来等待输入源传递的事件。
+```
+- (id)init
+{
+    CFRunLoopSourceContext context = {0, self, NULL, NULL, NULL, NULL, NULL, &RunLoopSourceScheduleRoutine, RunLoopSourceCancelRoutine, RunLoopSourcePerformRoutine};
+
+    runLoopSource = CFRunLoopSourceCreate(NULL, 0, &context);
+    
+    commands = [[NSMutableArray alloc] init];
+
+    return self;
+}
+
+- (void)addToCurrentRunLoop
+{
+    CFRunLoopRef runLoop = CFRunLoopGetCurrent();
+    CFRunLoopAddSource(runLoop, runLoopSource, kCFRunLoopDefaultMode);
+}
+```
+
+#### 协调输入源的客户端
+
+为了让输入源生效，需要操作它并从另一个线程发出信号。输入源的全部要点在于将关联的线程置于休眠状态直到有事件需要处理时。这一事实使得让应用程序中其他线程知道输入源以及有一种方式来与其通信成为了必要。
+
 
 
 
