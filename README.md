@@ -637,9 +637,14 @@ run loop对象提供了添加输入源、定时器和run loop观察者到run loo
     // Clean up code here. Be sure to release any allocated autorelease pools.
 }
 ```
+还可以递归运行一个run loop。换句话讲，可以调用`CFRunLoopRun`、`CFRunLoopRunInMode`或者`NSRunLoop`的方法来在输入源或定时器的处理程序例程中启动run loop。这样做时，可以使用任何需要的run loop模式来运行嵌套run loop，包括外部run loop使用的模式。
 
+### 退出Run Loop
 
-
+有两种方法能使run loop在其处理事件之前退出：
+- 配置run loop以超时值运行。
+- 告知run loop退出。
+- 
 
 
 
