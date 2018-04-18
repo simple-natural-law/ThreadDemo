@@ -850,7 +850,282 @@ CFRunLoopAddTimer(runLoop, timer, kCFRunLoopCommonModes);
 
 ### 配置基于端口的输入源
 
+Cocoa和Core Foundation都提供了用于线程或者进程之间通信的基于端口的对象。以下部分介绍如何使用几种不同类型的端口设置端口通信。
 
+#### 配置NSMachPort对象
 
+要使用`NSMachPort`对象建立本地连接，需要创建端口对象并将其添加到主线程的run loop中。在启动辅助线程时，将该端口对象传递给辅助线程的入口函数。辅助线程可以使用该端口对象将消息发送回主线程。
 
+##### 实现主线程代码
 
+以下代码显示了启动辅助工作线程的主线程代码。由于Cocoa框架为配置端口和run loop执行了许多中间步骤，所以launchThread方法的代码量明显少于其在Core Foundation的等价函数的代码量。但是，两者的行为几乎完全相同。不同的是，该方式不是将本地端口的名称发送给工作线程，而是直接发送`NSPort`对象。
+```
+- (void)launchThread
+{
+    NSPort* myPort = [NSMachPort port];
+    if (myPort)
+    {
+        // This class handles incoming port messages.
+        [myPort setDelegate:self];
+
+        // Install the port as an input source on the current run loop.
+        [[NSRunLoop currentRunLoop] addPort:myPort forMode:NSDefaultRunLoopMode];
+
+        // Detach the thread. Let the worker release the port.
+        [NSThread detachNewThreadSelector:@selector(LaunchThreadWithPort:) toTarget [MyWorkerClass class] withObject:myPort];
+    }
+}
+```
+为了在线程之间建立一个双向通信通道，可能需要工作线程在check-in消息中发送自己的本地端口到主线程。接收check-in消息使得主线程知道在启动辅助线程时一切顺利，并且还提供了一种方式将更多消息发送到主线程。
+
+以下代码显示了主线程的`handlePortMessage:`方法。当数据到达线程自己的本地端口时，会调用此方法。当check-in消息到达时，该方法直接从端口消息中检索辅助线程的端口，并将其保存以供以后使用。
+```
+#define kCheckinMessage 100
+
+// Handle responses from the worker thread.
+- (void)handlePortMessage:(NSPortMessage *)portMessage
+{
+    unsigned int message = [portMessage msgid];
+    
+    NSPort* distantPort = nil;
+
+    if (message == kCheckinMessage)
+    {
+        // Get the worker thread’s communications port.
+        distantPort = [portMessage sendPort];
+
+        // Retain and save the worker port for later use.
+        [self storeDistantPort:distantPort];
+        
+    }else
+    {
+        // Handle other messages.
+    }
+}
+```
+
+##### 实现辅助线程代码
+
+对于辅助工作线程，必须配置该线程并使用指定的端口将消息传回主线程。
+
+以下代码显示了设置工作线程的代码。在为线程创建一个自动释放池之后，此方法创建一个工作者对象来驱动线程执行。工作者对象的`sendCheckinMessage:`方法为工作线程创建一个本地端口，并将一个check-in消息发送回主线程。
+```
++(void)LaunchThreadWithPort:(id)inData
+{
+    NSAutoreleasePool*  pool = [[NSAutoreleasePool alloc] init];
+
+    // Set up the connection between this thread and the main thread.
+    NSPort* distantPort = (NSPort*)inData;
+
+    MyWorkerClass*  workerObj = [[self alloc] init];
+    [workerObj sendCheckinMessage:distantPort];
+    [distantPort release];
+
+    // Let the run loop process things.
+    do
+    {
+        [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode
+        beforeDate:[NSDate distantFuture]];
+    }
+    while (![workerObj shouldExit]);
+
+    [workerObj release];
+    [pool release];
+}
+```
+在使用`NSMachPort`时，本地和远程线程可以使用相同的端口对象进行线程之间的单向通信。换句话说，由一个线程创建的本地端口对象成为另一个线程的远程端口对象。
+
+以下代码显示了辅助线程的check-in例程。此方法为将来的通信设置了自己的本地端口，然后将check-in消息发送回主线程。此方法使用`LaunchThreadWithPort:`中收到的端口对象作为消息的目标。
+```
+// Worker thread check-in method
+- (void)sendCheckinMessage:(NSPort*)outPort
+{
+    // Retain and save the remote port for future use.
+    [self setRemotePort:outPort];
+
+    // Create and configure the worker thread port.
+    NSPort* myPort = [NSMachPort port];
+    [myPort setDelegate:self];
+    [[NSRunLoop currentRunLoop] addPort:myPort forMode:NSDefaultRunLoopMode];
+
+    // Create the check-in message.
+    NSPortMessage* messageObj = [[NSPortMessage alloc] initWithSendPort:outPort receivePort:myPort components:nil];
+
+    if (messageObj)
+    {
+        // Finish configuring the message and send it immediately.
+        [messageObj setMsgId:setMsgid:kCheckinMessage];
+        [messageObj sendBeforeDate:[NSDate date]];
+    }
+}
+```
+
+#### 配置NSMessagePort对象
+
+要使用`NSMessagePort`对象建立本地连接，不能只是简单地在线程之间传递端口对象，必须按名称获取远程消息端口。在Cocoa中实现这一点需要使用特定名称来注册本地端口，然后将该名称传递给远程线程，以便它可以获取对应的端口对象进行通信。以下代码显示了在使用消息端口的情况时，端口的创建和注册过程。
+```
+NSPort* localPort = [[NSMessagePort alloc] init];
+
+// Configure the object and add it to the current run loop.
+[localPort setDelegate:self];
+
+[[NSRunLoop currentRunLoop] addPort:localPort forMode:NSDefaultRunLoopMode];
+
+// Register the port using a specific name. The name must be unique.
+NSString* localPortName = [NSString stringWithFormat:@"MyPortName"];
+
+[[NSMessagePortNameServer sharedInstance] registerPort:localPort name:localPortName];
+```
+
+#### 在Core Foundation中配置基于端口的输入源
+
+本节介绍如何使用Core Foundation在应用程序的主线程和工作线程之间建立双向通信通道。
+
+以下代码显示了应用程序主线程调用的启动工作线程的代码。首先设置一个`CFMessagePortRef`类型来监听来自工作线程的消息。工作线程需要端口的名称来建立连接，所以字符串值被传递给工作线程的入口函数。端口名称在当前用户上下文中通常应该是唯一的，否则可能会遇到冲突。
+```
+#define kThreadStackSize        (8 *4096)
+
+OSStatus MySpawnThread()
+{
+    // Create a local port for receiving responses.
+    CFStringRef myPortName;
+    CFMessagePortRef myPort;
+    CFRunLoopSourceRef rlSource;
+    CFMessagePortContext context = {0, NULL, NULL, NULL, NULL};
+    Boolean shouldFreeInfo;
+
+    // Create a string with the port name.
+    myPortName = CFStringCreateWithFormat(NULL, NULL, CFSTR("com.myapp.MainThread"));
+
+    // Create the port.
+    myPort = CFMessagePortCreateLocal(NULL, myPortName, &MainThreadResponseHandler, &context, &shouldFreeInfo);
+
+    if (myPort != NULL)
+    {
+        // The port was successfully created.
+        // Now create a run loop source for it.
+        rlSource = CFMessagePortCreateRunLoopSource(NULL, myPort, 0);
+
+        if (rlSource)
+        {
+            // Add the source to the current run loop.
+            CFRunLoopAddSource(CFRunLoopGetCurrent(), rlSource, kCFRunLoopDefaultMode);
+
+            // Once installed, these can be freed.
+            CFRelease(myPort);
+            CFRelease(rlSource);
+        }
+    }
+
+    // Create the thread and continue processing.
+    MPTaskID        taskID;
+    return(MPCreateTask(&ServerThreadEntryPoint, (void*)myPortName, kThreadStackSize, NULL, NULL, NULL, 0, &taskID));
+}
+```
+在安装端口并启动线程之后，在等待线程的check-in消息时，主线程会继续定期执行。当check-in消息到达时，其被调度到主线程的MainThreadResponseHandler函数，如下所示。此函数提供工作线程的端口名称并为将来的通信创建管道。
+```
+#define kCheckinMessage 100
+
+// Main thread port message handler
+CFDataRef MainThreadResponseHandler(CFMessagePortRef local, SInt32 msgid,
+CFDataRef data, void* info)
+{
+    if (msgid == kCheckinMessage)
+    {
+        CFMessagePortRef messagePort;
+        CFStringRef threadPortName;
+        CFIndex bufferLength = CFDataGetLength(data);
+        UInt8* buffer = CFAllocatorAllocate(NULL, bufferLength, 0);
+
+        CFDataGetBytes(data, CFRangeMake(0, bufferLength), buffer);
+        threadPortName = CFStringCreateWithBytes (NULL, buffer, bufferLength, kCFStringEncodingASCII, FALSE);
+
+        // You must obtain a remote message port by name.
+        messagePort = CFMessagePortCreateRemote(NULL, (CFStringRef)threadPortName);
+
+        if (messagePort)
+        {
+            // Retain and save the thread’s comm port for future reference.
+            AddPortToListOfActiveThreads(messagePort);
+
+            // Since the port is retained by the previous function, release
+            // it here.
+            CFRelease(messagePort);
+        }
+
+        // Clean up.
+        CFRelease(threadPortName);
+        CFAllocatorDeallocate(NULL, buffer);
+    }
+    else
+    {
+        // Process other messages.
+    }
+
+    return NULL;
+}
+```
+在配置主线程之后，剩余的唯一事情是新创建的工作线程创建其自己的端口并check in。以下代码显示了工作线程的入口函数，该函数提前主线的端口名称并使用它创建远程连接回到主线程。然后该函数为自己创建一个本地端口，在该线程的run loop中安装该端口，并向包含本地端口名称的主线程发送一个check-in消息。
+```
+OSStatus ServerThreadEntryPoint(void* param)
+{
+    // Create the remote port to the main thread.
+    CFMessagePortRef mainThreadPort;
+    CFStringRef portName = (CFStringRef)param;
+
+    mainThreadPort = CFMessagePortCreateRemote(NULL, portName);
+
+    // Free the string that was passed in param.
+    CFRelease(portName);
+
+    // Create a port for the worker thread.
+    CFStringRef myPortName = CFStringCreateWithFormat(NULL, NULL, CFSTR("com.MyApp.Thread-%d"), MPCurrentTaskID());
+
+    // Store the port in this thread’s context info for later reference.
+    CFMessagePortContext context = {0, mainThreadPort, NULL, NULL, NULL};
+    Boolean shouldFreeInfo;
+    Boolean shouldAbort = TRUE;
+
+    CFMessagePortRef myPort = CFMessagePortCreateLocal(NULL, myPortName, &ProcessClientRequest, &context, &shouldFreeInfo);
+
+    if (shouldFreeInfo)
+    {
+        // Couldn't create a local port, so kill the thread.
+        MPExit(0);
+    }
+
+    CFRunLoopSourceRef rlSource = CFMessagePortCreateRunLoopSource(NULL, myPort, 0);
+    if (!rlSource)
+    {
+        // Couldn't create a local port, so kill the thread.
+        MPExit(0);
+    }
+
+    // Add the source to the current run loop.
+    CFRunLoopAddSource(CFRunLoopGetCurrent(), rlSource, kCFRunLoopDefaultMode);
+
+    // Once installed, these can be freed.
+    CFRelease(myPort);
+    CFRelease(rlSource);
+
+    // Package up the port name and send the check-in message.
+    CFDataRef returnData = nil;
+    CFDataRef outData;
+    CFIndex stringLength = CFStringGetLength(myPortName);
+    UInt8* buffer = CFAllocatorAllocate(NULL, stringLength, 0);
+
+    CFStringGetBytes(myPortName, CFRangeMake(0,stringLength), kCFStringEncodingASCII, 0, FALSE, buffer, stringLength, NULL);
+
+    outData = CFDataCreate(NULL, buffer, stringLength);
+
+    CFMessagePortSendRequest(mainThreadPort, kCheckinMessage, outData, 0.1, 0.0, NULL, NULL);
+
+    // Clean up thread data structures.
+    CFRelease(outData);
+    CFAllocatorDeallocate(NULL, buffer);
+
+    // Enter the run loop.
+    CFRunLoopRun();
+}
+```
+一旦工作线程进入其run loop，发送到线程的端口的所有未来事件都将由ProcessClientRequest函数处理。该函数的实现取决于线程所执行的工作类型，在此不显示。
