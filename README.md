@@ -251,7 +251,7 @@ void LaunchThread()
     }
 }
 ```
-如果将以上代码添加到某个源文件并调用LaunchThread函数，这样会在应用程序中创建一个新的分离线程。当然，使用这段代码创建的新线程不会做任何有用的事情。线程讲启动并立即退出。为了使事情更有趣，我们需要将代码添加到PosixThreadMainRoutine函数中以完成一些实际工作。为了确保线程知道要做什么工作，可以在创建时传递一些数据的指针给它。将此指针作为`pthread_create`函数的最后一个参数传递。
+如果将以上代码添加到某个源文件并调用LaunchThread函数，这样会在应用程序中创建一个新的分离线程。当然，使用这段代码创建的新线程不会做任何有用的事情。线程将启动并立即退出。为了使事情更有趣，我们需要将代码添加到PosixThreadMainRoutine函数中以完成一些实际工作。为了确保线程知道要做什么工作，可以在创建时传递一些数据的指针给它。将此指针作为`pthread_create`函数的最后一个参数传递。
 
 为了将新创建的线程的信息传递回应用程序的主线程，需要在目标线程之间建立通信路径。对于基于C的应用程序，线程之间有多种通信方式，包括使用端口、 条件或共享内存。对于长寿命的线程，几乎总是应该建立某种线程间通信机制，以便让应用程序的主线程检查线程的状态或者在应用程序退出时干净地关闭线程。
 
@@ -325,11 +325,11 @@ Cocoa和POSIX以不同的方式存储线程字典，所以不能混合和匹配�
 
 ### 创建自动释放池
 
-链接了Objective-C框架的应用程序通常必须在其每个线程中至少创建一个自动释放池。如果应用程序使用托管模型 -- 应用程序处理保留和释放对象的位置 -- 自动释放池将捕获该线程中自动释放的所有对象。
+链接了Objective-C框架的应用程序通常必须在其每个线程中至少创建一个自动释放池。如果应用程序使用管理模型 -- 应用程序处理保留和释放对象的地方 -- 自动释放池将捕获该线程中自动释放的所有对象。
 
-如果应用程序使用垃圾回收而不是托管内存模型，则不需要创建自动释放池。自动释放池的存在并不会对垃圾回收应用程序造成危害，大多数情况下都会被忽略。在允许代码模块必须同时支持垃圾回收和托管内存模型的情况下，自动释放池必须存在以便支持托管内存模型代码，并且如果应用程序在启用垃圾回收的情况下运行，则会被忽略。
+如果应用程序使用垃圾回收而不是管理内存模型，则不需要创建自动释放池。自动释放池的存在并不会对垃圾回收应用程序造成危害，大多数情况下都会被忽略。在允许代码模块必须同时支持垃圾回收和管理内存模型的情况下，自动释放池必须存在以便支持管理内存模型代码，并且如果应用程序在启用垃圾回收的情况下运行，则会被忽略。
 
-如果应用程序使用托管内存模型，则创建自动释放池是在线程入口例程中首先执行的操作。同样，销毁这个自动释放池应该是在线程中做的最后一件事。该池确保自动释放的对象被捕获，在线程本身退出之前它不会释放它们。以下代码显示了使用自动释放池的基本线程入口例程的结构。
+如果应用程序使用管理内存模型，则创建自动释放池是在线程入口例程中首先执行的操作。同样，销毁这个自动释放池应该是在线程中做的最后一件事。该池确保自动释放的对象被捕获，在线程本身退出之前它不会释放它们。以下代码显示了使用自动释放池的基本线程入口例程的结构。
 ```
 - (void)myThreadMainRoutine
 {
@@ -609,7 +609,7 @@ run loop对象提供了添加输入源、定时器和run loop观察者到run loo
 
 除了超时值之外，还可以使用特定模式运行run loop。模式和超时值不是互斥的，可以同时使用它们来启动run loop。模式限制了传递事件到run loop的源的类型，有关模式的详细信息请参看[Run Loop模式](turn)。
 
-以下代码显示了一个线程的主要入口例程的初略版本。这个示例的关键部分显示了run loop的基本结构。本质上，我们将输入源和定时器添加到run loop，然后重复调用其中一个例程来启动run loop。每次run loop例程返回时，都会检查是否有任何可能导致退出线程的情况。该示例使用Core Foundation的run loop例程，以便它可以检查返回结果并确定run loop退出的原因。如果使用Cocoa并且不需要检查返回值，则也可以使用`NSRunLoop`类的方法以类似的方式来运行run loop。
+以下代码显示了一个线程的主要入口例程的粗略版本。这个示例的关键部分显示了run loop的基本结构。本质上，我们将输入源和定时器添加到run loop，然后重复调用其中一个例程来启动run loop。每次run loop例程返回时，都会检查是否有任何可能导致退出线程的情况。该示例使用Core Foundation的run loop例程，以便它可以检查返回结果并确定run loop退出的原因。如果使用Cocoa并且不需要检查返回值，则也可以使用`NSRunLoop`类的方法以类似的方式来运行run loop。
 ```
 - (void)skeletonThreadMain
 {
@@ -637,7 +637,7 @@ run loop对象提供了添加输入源、定时器和run loop观察者到run loo
     // Clean up code here. Be sure to release any allocated autorelease pools.
 }
 ```
-还可以递归运行一个run loop。换句话讲，可以调用`CFRunLoopRun`、`CFRunLoopRunInMode`或者`NSRunLoop`的方法来在输入源或定时器的处理例程中启动run loop。这样做时，可以使用任何需要的run loop模式来运行嵌套run loop，包括外部run loop使用的模式。
+还可以递归运行一个run loop。换句话说，可以调用`CFRunLoopRun`、`CFRunLoopRunInMode`或者`NSRunLoop`的方法来在输入源或定时器的处理例程中启动run loop。这样做时，可以使用任何需要的run loop模式来运行嵌套run loop，包括外部run loop使用的模式。
 
 ### 退出Run Loop
 
@@ -775,7 +775,81 @@ void RunLoopSourceCancelRoutine (void *info, CFRunLoopRef rl, CFStringRef mode)
 
 #### 协调输入源的客户端
 
-为了让输入源生效，需要操作它并从另一个线程发送信号给它。输入源的全部要点在于将关联的线程置于休眠状态直到有事件需要处理时。这一事实使得让应用程序中其他线程知道输入源以及有一种方式来与其通信成为了必要。
+为了让输入源生效，需要操作它并从另一个线程发送信号给它。输入源的全部要点在于将关联的线程置于休眠状态直到有事件需要处理时。这一事实使得让应用程序中其他线程能够知道输入源并有一种方式来与其通信成为了必要。
+
+将输入源告知给客户端的一种方式是在首次安装输入源到run loop时发出注册请求。可以根据需要为输入源注册尽可能多的客户端，或者可以将其注册到某个中心机构，然后将输入源发送给感兴趣的客户端。以下代码显示了由应用程序委托对象定义的在调用RunLoopSource对象的调度函数时调用的注册方法。该方法接收RunLoopSource对象提供的RunLoopContext对象，并将其添加到源列表中。以下代码还显示了用于在从run loop中移除输入源时取消注册输入源的例程。
+```
+- (void)registerSource:(RunLoopContext*)sourceInfo;
+{
+    [sourcesToPing addObject:sourceInfo];
+}
+
+- (void)removeSource:(RunLoopContext*)sourceInfo
+{
+    id    objToRemove = nil;
+
+    for (RunLoopContext* context in sourcesToPing)
+    {
+        if ([context isEqual:sourceInfo])
+        {
+            objToRemove = context;
+            break;
+        }
+    }
+
+    if (objToRemove)
+        [sourcesToPing removeObject:objToRemove];
+}
+```
+
+#### 发送信号到输入源
+
+在客户端传递数据给输入源后，客户端必须发送信号到输入源并唤醒输入源的run loop。发送信号到输入源让run loop知道输入源已经准备好被处理。并且由于线程可能在发送信号时处于休眠状态，所以应该始终明确地唤醒run loop。如果不这样做，可能会导致run loop延迟处理输入源。
+
+以下代码显示了RunLoopSource对象的fireCommandsOnRunLoop方法。当客户端准备好输入源来处理被添加到缓冲区的命令时，客户端会调用此方法。
+```
+- (void)fireCommandsOnRunLoop:(CFRunLoopRef)runloop
+{
+    CFRunLoopSourceSignal(runLoopSource);
+    CFRunLoopWakeUp(runloop);
+}
+```
+> **注意**：绝对不要尝试通过使用自定义输入源来处理`SIGHUP`或者其他类型的过程级信号。Core Foundation中用于唤醒线程的函数不是信号安全的，不应该在应用程序的信号处理例程中使用它们。
+
+### 配置定时器源
+
+要创建一个定时器源，需要创建一个定时器对象并将其调度到run loop中。在Cocoa中，使用`NSTimer`类来创建新的定时器对象，而在Core Foundation中使用`CFRunLoopTimerRef`不透明类型。`NSTimer`类只是Core Foundation的扩展，其提供了一些便利功能。例如，使用同一个方法来创建和调度定时器。
+
+在Cocoa中，可以使用以下类方法中的一种来创建和调度定时器：
+-  `scheduledTimerWithTimeInterval:target:selector:userInfo:repeats:`
+-  `scheduledTimerWithTimeInterval:invocation:repeats:`
+
+这些方法会创建定时器，并将其添加到当前线程的默认模式（`NSDefaultRunLoopMode`）下的run loop中。如果想要手动调度定时器，可以创建`NSTimer`对象，然后使用`NSRunLoop`的`addTimer:forMode:`方法将其添加到run loop中。这两种技术基本上会做相同的事情，但是提供了对于定时器配置的不同级别的控制。例如，创建一个定时器并手动将其添加到run loop中，则可以使用默认模式之外的模式来执行此操作。以下代码显示了如何使用这两种技术创建定时器。第一个定时器的初始延迟时间为1秒，但是之后每隔0.1秒定时触发一次。第二个定时器在延迟0.2秒后开发触发，然后每隔0.2秒定时触发一次。
+```
+NSRunLoop* myRunLoop = [NSRunLoop currentRunLoop];
+
+// Create and schedule the first timer.
+NSDate* futureDate = [NSDate dateWithTimeIntervalSinceNow:1.0];
+
+NSTimer* myTimer = [[NSTimer alloc] initWithFireDate:futureDate interval:0.1 target:self selector:@selector(myDoFireTimer1:) userInfo:nil repeats:YES];
+
+[myRunLoop addTimer:myTimer forMode:NSDefaultRunLoopMode];
+
+// Create and schedule the second timer.
+[NSTimer scheduledTimerWithTimeInterval:0.2 target:self selector:@selector(myDoFireTimer2:) userInfo:nil repeats:YES];
+```
+以下代码显示了使用Core Foundation函数配置定时器所需要的代码。虽然此示例没有在上下文结构中传递任何用户定义的信息，但我们可以使用此结构来传递定时器所需的任何自定义数据。有关此结构的内容的更多信息，请参看[CFRunLoopTimer Reference](https://developer.apple.com/documentation/corefoundation/cfrunlooptimer-rhk)。
+```
+CFRunLoopRef runLoop = CFRunLoopGetCurrent();
+CFRunLoopTimerContext context = {0, NULL, NULL, NULL, NULL};
+CFRunLoopTimerRef timer = CFRunLoopTimerCreate(kCFAllocatorDefault, 0.1, 0.3, 0, 0,
+&myCFTimerCallback, &context);
+
+CFRunLoopAddTimer(runLoop, timer, kCFRunLoopCommonModes);
+```
+
+### 配置基于端口的输入源
+
 
 
 
