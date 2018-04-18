@@ -553,7 +553,7 @@ run loop对象提供了添加输入源、定时器和run loop观察者到run loo
 - 在Cocoa应用程序中，使用`NSRunLoop`的`currentRunLoop`类方法来获取`NSRunLoop`对象。
 - 使用`CFRunLoopGetCurrent`函数。
 
-尽管它们不是免费桥接类型，但在需要时，可以从`NSRunLoop`对象获取`CFRunLoopRef`不透明类型。`NSRunLoop`类定义了一个`getCFRunLoop`方法，该方法返回可以传递给Core Foundation例程的`CFRunLoopRef`类型。因为两个对象都引用同一个run loop，所以可以根据需要混合调用`NSRunLoop`对象和`CFRunLoopRef`不透明类型。
+尽管它们不是自由桥接类型，但在需要时，可以从`NSRunLoop`对象获取`CFRunLoopRef`不透明类型。`NSRunLoop`类定义了一个`getCFRunLoop`方法，该方法返回可以传递给Core Foundation例程的`CFRunLoopRef`类型。因为两个对象都引用同一个run loop，所以可以根据需要混合调用`NSRunLoop`对象和`CFRunLoopRef`不透明类型。
 
 ### 配置Run Loop
 
