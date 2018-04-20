@@ -1305,7 +1305,7 @@ anObject = [myArray objectAtIndex:0];
 | Test and set | OSAtomicTestAndSet<br>OSAtomicTestAndSetBarrier | 测试指定变量中的一个位（bit），将该位设置为1，并将旧位的值作为布尔值返回。根据字节（（char*）地址 + （n >> 3））的公式（0x80 >> （n&7））对位进行测试，其中n是位编号，地址是指向变量的指针。该公式有效地将变量分解为8位大小的块，并将每个块中的位反向排序。例如，要测试一个32位整数的最低位（位0），实际上应该指定位编号为7；类似地，为了测试最高位（位32），应该指定位编号为24。 |
 | Test and clear | OSAtomicTestAndClear<br>OSAtomicTestAndClearBarrier | 测试指定变量中的一个位（bit），将该位设置为0，并将旧位的值作为布尔值返回。根据字节（（char*）地址 + （n >> 3））的公式（0x80 >> （n&7））对位进行测试，其中n是位编号，地址是指向变量的指针。该公式有效地将变量分解为8位大小的块，并将每个块中的位反向排序。例如，要测试一个32位整数的最低位（位0），实际上应该指定位编号为7；类似地，为了测试最高位（位32），应该指定位编号为24。 |
 
-大多数原子函数的行为应该是相对简单直接的，但是上表中显示的原子`test-and-set`和`compare-and-swap`操作的行为稍微复杂一点。前三个`OSAtomicTestAndSet`函数调用演示了如何在整数值上使用位操作公式，其结果可能与我们所期望的不同。最后两个调用显示了`OSAtomicCompareAndSwap32`函数的行为。在所有情况下，当没有其他线程正在操作这些值时，这些函数在无竞争的情况下被调用。
+大多数原子函数的行为相对简单直接，但是上表中显示的原子`test-and-set`和`compare-and-swap`操作的行为稍微复杂一点。前三个`OSAtomicTestAndSet`函数调用演示了如何在整数值上使用位操作公式，其结果可能与我们所期望的不同。最后两个调用显示了`OSAtomicCompareAndSwap32`函数的行为。在所有情况下，当没有其他线程正在操作这些值时，这些函数在无竞争的情况下被调用。
 ```
 int32_t  theValue = 0;
 OSAtomicTestAndSet(0, &theValue);
@@ -1390,7 +1390,7 @@ while (moreToDo)
 
 ### 使用其他Cocoa锁
 
-#### 使用`NSRecursiveLock`对象
+#### 使用NSRecursiveLock对象
 
 `NSRecursiveLock`类定义了一个锁，它可以被同一个线程多次获取而不会导致线程死锁。递归锁会记录锁被成功获取的次数，每次成功获取锁后之必须通过相应的解锁锁来保持平衡。只有当所有的锁定和解锁调用平衡时，锁才会被释放，以便其他线程可以获取它。
 
@@ -1413,5 +1413,40 @@ MyRecursiveFunction(5);
 ```
 > **注意**：因为在所有的锁定和解锁调用保持平衡之前递归锁不会被释放，所以应该仔细衡量使用性能锁来应对潜在性能影响的决定。长时间保持锁定会导致其他线程阻塞直到递归完成。如果可以重写代码以消除递归或消除使用递归锁的需要，则可能会获得更好的性能。
 
-#### 使用`NSConditionLock`对象
+#### 使用NSConditionLock对象
+
+`NSConditionLock`对象定义了一个可以使用特定值来锁定和解锁的互斥锁。**不应该将这种类型的锁与条件混淆。** 其行为与条件有些类似，但它们的实现有很大差异。
+
+通常情况下，当线程需要按照特定顺序执行任务时（例如，当一个线程生产另一个线程消费的数据时），可以使用`NSConditionLock`对象。当生产者正在执行时，消费者使用特定于应用程序的条件来获取锁。（条件本身只是我们定义的整数值。）当生产者完成时，它解锁锁并将锁条件设置为适当的整数值以唤醒消费者线程，然后消费者线程继续处理数据。
+
+`NSConditionLock`对象响应的锁定和解锁方法可以被任意组合使用。例如，可以将锁定消息与`unlockWithCondition:`配对使用，或者将`lockWhenCondition:`消息与解锁配对使用。当然，后一种组合解锁了锁，但可能不会释放等待特定条件值的任何线程。
+
+一些示例显示了如何使用条件锁来处理生产者-消费者问题。想象一下，应用程序包含一个数据队列。生产者线程将数据添加到队列中，消费者线程从队列中提取数据。生产者不需要等待特定条件，但它必须等待锁可用，以便它可以安全地将数据添加到队列中。
+```
+id condLock = [[NSConditionLock alloc] initWithCondition:NO_DATA];
+
+while(true)
+{
+    [condLock lock];
+    /* Add data to the queue. */
+    [condLock unlockWithCondition:HAS_DATA];
+}
+```
+因为锁的初始条件设置为`NO_DATA`，所以生产者线程在最初获取锁时应该没有问题。它将数据填充到队列中并将条件设置为`HAS_DATA`。在随后的迭代过程中，生产者线程可以在新数据到达时添加该数据而不管队列是空的还是仍然有一些数据。生产者线程会阻塞的唯一时刻是消费者线程正在从队列中提取数据。
+
+因为消费者线程必须有数据处理，所以它使用特定的条件在队列上等待。当生产者将数据添加到队列中时，消费者线程被唤醒并获取锁。然后它可以从队列中提取数据并更新队列状态。以下示例显示了消费者线程的处理循环的基本结构。
+```
+while (true)
+{
+    [condLock lockWhenCondition:HAS_DATA];
+    /* Remove data from the queue. */
+    [condLock unlockWithCondition:(isEmpty ? NO_DATA : HAS_DATA)];
+
+    // Process the data locally.
+}
+```
+
+#### 使用NSDistributedLock对象
+
+`NSDistributedLock`类可以被多个主机上的多个应用程序使用，以限制对某些共享资源（如文件）的访问。锁本身实际上是一个使用文件系统项目（例如文件或目录）实现的互斥锁。要使`NSDistributedLock`对象可用，锁必须可供所有使用它的应用程序写入。这通常意味着将其放置于所有运行该应用程序的计算机都可访问的文件系统中。
 
