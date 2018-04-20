@@ -1305,5 +1305,29 @@ anObject = [myArray objectAtIndex:0];
 | Test and set | OSAtomicTestAndSet<br>OSAtomicTestAndSetBarrier | 测试指定变量中的一个位（bit），将该位设置为1，并将旧位的值作为布尔值返回。根据字节（（char*）地址 + （n >> 3））的公式（0x80 >> （n&7））对位进行测试，其中n是位编号，地址是指向变量的指针。该公式有效地将变量分解为8位大小的块，并将每个块中的位反向排序。例如，要测试一个32位整数的最低位（位0），实际上应该指定位编号为7；类似地，为了测试最高位（位32），应该指定位编号为24。 |
 | Test and clear | OSAtomicTestAndClear<br>OSAtomicTestAndClearBarrier | 测试指定变量中的一个位（bit），将该位设置为0，并将旧位的值作为布尔值返回。根据字节（（char*）地址 + （n >> 3））的公式（0x80 >> （n&7））对位进行测试，其中n是位编号，地址是指向变量的指针。该公式有效地将变量分解为8位大小的块，并将每个块中的位反向排序。例如，要测试一个32位整数的最低位（位0），实际上应该指定位编号为7；类似地，为了测试最高位（位32），应该指定位编号为24。 |
 
+大多数原子函数的行为应该是相对简单直接的，但是上表中显示的原子`test-and-set`和`compare-and-swap`操作的行为稍微复杂一点。前三个`OSAtomicTestAndSet`函数调用演示了如何在整数值上使用位操作公式，其结果可能与我们所期望的不同。最后两个调用显示了`OSAtomicCompareAndSwap32`函数的行为。在所有情况下，当没有其他线程正在操作这些值时，这些函数在无竞争的情况下被调用。
+```
+int32_t  theValue = 0;
+OSAtomicTestAndSet(0, &theValue);
+// theValue is now 128.
+
+theValue = 0;
+OSAtomicTestAndSet(7, &theValue);
+// theValue is now 1.
+
+theValue = 0;
+OSAtomicTestAndSet(15, &theValue)
+// theValue is now 256.
+
+OSAtomicCompareAndSwap32(256, 512, &theValue);
+// theValue is now 512.
+
+OSAtomicCompareAndSwap32(256, 1024, &theValue);
+// theValue is still 512.
+```
+
+## 使用锁
+
+
 
 
