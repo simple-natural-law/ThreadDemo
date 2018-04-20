@@ -1298,4 +1298,12 @@ anObject = [myArray objectAtIndex:0];
 | Add | OSAtomicAdd32<br>OSAtomicAdd32Barrier<br>OSAtomicAdd64<br>OSAtomicAdd64Barrier | 将两个整数值相加并将结果存储在指定变量中。 |
 | Increment | OSAtomicIncrement32<br>OSAtomicIncrement32Barrier<br>OSAtomicIncrement64<br>OSAtomicIncrement64Barrier | 将指定的整数值递增1。 |
 | Decrement | OSAtomicDecrement32<br>OSAtomicDecrement32Barrier<br>OSAtomicDecrement64<br>OSAtomicDecrement64Barrier | 将指定的整数值递减1。 |
+| Logical OR | OSAtomicOr32<br>OSAtomicOr32Barrier | 在指定的32位值和32位掩码之间执行逻辑或。 |
+| Logical AND | OSAtomicAnd32<br>OSAtomicAnd32Barrier | 在指定的32位值和32位掩码之间执行逻辑于。 |
+| Logical XOR | OSAtomicXor32<br>OSAtomicXor32Barrier | 在指定的32位值和32位掩码之间执行逻辑异或。 |
+| Compare and swap | OSAtomicCompareAndSwap32<br>OSAtomicCompareAndSwap32Barrier<br>OSAtomicCompareAndSwap64<br>OSAtomicCompareAndSwap64Barrier<br>OSAtomicCompareAndSwapPtr<br>OSAtomicCompareAndSwapPtrBarrier<br>OSAtomicCompareAndSwapInt<br>OSAtomicCompareAndSwapIntBarrier<br>OSAtomicCompareAndSwapLong<br>OSAtomicCompareAndSwapLongBarrier | 将变量与指定的旧值进行比较。如果两个值相等，则该函数将指定的新值赋给变量；否则，它什么都不做。比较和赋值是作为一个原子操作完成的，并且该函数返回一个布尔值来指示交换实际是否发生。 |
+| Test and set | OSAtomicTestAndSet<br>OSAtomicTestAndSetBarrier | 测试指定变量中的一个位（bit），将该位设置为1，并将旧位的值作为布尔值返回。根据字节（（char*）地址 + （n >> 3））的公式（0x80 >> （n&7））对位进行测试，其中n是位编号，地址是指向变量的指针。该公式有效地将变量分解为8位大小的块，并将每个块中的位反向排序。例如，要测试一个32位整数的最低位（位0），实际上应该指定位编号为7；类似地，为了测试最高位（位32），应该指定位编号为24。 |
+| Test and clear | OSAtomicTestAndClear<br>OSAtomicTestAndClearBarrier | 测试指定变量中的一个位（bit），将该位设置为0，并将旧位的值作为布尔值返回。根据字节（（char*）地址 + （n >> 3））的公式（0x80 >> （n&7））对位进行测试，其中n是位编号，地址是指向变量的指针。该公式有效地将变量分解为8位大小的块，并将每个块中的位反向排序。例如，要测试一个32位整数的最低位（位0），实际上应该指定位编号为7；类似地，为了测试最高位（位32），应该指定位编号为24。 |
+
+
 
