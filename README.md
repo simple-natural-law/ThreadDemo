@@ -1328,6 +1328,90 @@ OSAtomicCompareAndSwap32(256, 1024, &theValue);
 
 ## 使用锁
 
+锁是线程编程的基本同步工具。锁可让我们轻松保护大量代码，以确保代码的正确性。OS X和iOS为所有应用程序类型提供了基本的互斥锁，Foundation框架为特殊情况定义了一些另外的互斥锁的变体。以下部分展示如何使用其中几种锁类型。
 
+### 使用POSIX互斥锁
 
+POSIX互斥锁非常易于在任何应用程序中使用。要创建互斥锁，可以声明并初始化一个`pthread_mutex_t`结构。要锁定和解锁互斥锁，可以使用`pthread_mutex_lock`和`pthread_mutex_unlock`函数。当不需要再使用锁时，只需要调用`pthread_mutex_destroy`函数释放锁数据结构即可。如下所示：
+```
+pthread_mutex_t mutex;
+void MyInitFunction()
+{
+    pthread_mutex_init(&mutex, NULL);
+}
+
+void MyLockingFunction()
+{
+    pthread_mutex_lock(&mutex);
+    // Do work.
+    pthread_mutex_unlock(&mutex);
+}
+```
+> **注意**：上面的代码只是一个用来显示POSIX线程互斥锁函数的基本用法的简单例子，在实际使用时应该检查这些函数返回的错误码并适当地处理它们。
+
+### 使用NSLock类
+
+`NSLock`对象为Cocoa应用程序实现了一个基本的互斥锁。所有锁的接口（包括`NSLock`）实际上都由`NSLocking`协议定义，该协议定义了`lock`和`unlock`方法。可以像使用互斥锁一样使用这些方法来获取和释放锁。
+
+除了标准的锁定行为，`NSLock`类还添加了`tryLock`和`lockBeforeDate:`方法。`tryLock`方法试图获取锁时，如果锁不可用，它不会阻塞当前线程。相反，该方法只是返回`NO`。`lockBeforeDate:`方法试图获取锁时，如果在指定时间限制内未获取到锁，则会取消阻塞线程（并返回`NO`）。
+
+以下示例显示了如何使用`NSLock`对象来协调可视化显示的更新，需要显示的数据由多个线程计算。如果线程无法立即获取锁，则只需要继续计算，直到它可以获取锁并更新显示。
+```
+BOOL moreToDo = YES;
+NSLock *theLock = [[NSLock alloc] init];
+...
+while (moreToDo) 
+{
+    /* Do another increment of calculation */
+    /* until there’s no more to do. */
+    if ([theLock tryLock]) 
+    {
+        /* Update display used by all threads. */
+        [theLock unlock];
+    }
+}
+```
+
+### 使用@synchronized指令
+
+`@synchronized`指令是在Objective-C代码中快速创建互斥锁的一种便捷方式。`@synchronized`指令执行任何其他互斥锁都会执行的操作，它能防止不同线程同时获取同一个锁。在这种情况下，不必直接创建互斥锁或者锁对象。
+```
+- (void)myMethod:(id)anObj
+{
+    @synchronized(anObj)
+    {
+        // Everything between the braces is protected by the @synchronized directive.
+    }
+}
+```
+传递给`@synchronized`指令的对象是用于区别受保护块的唯一标识符。如果在两个不同的线程执行`myMethod:`方法并在每个线程上为anObj参数传递不同的对象，则每个线程都会加锁并继续处理而不被另一个线程阻塞。但是，如果同样情况下传递的是相同的对象，其中一个线程将首先获取锁，另一个线程会被阻塞，直到第一个线程退出临界区。
+
+作为预防措施，`@synchronized`块隐式地将一个异常处理程序添加到受保护的代码中。如果抛出异常，该处理程序会自动释放互斥锁。这意味着为了使用`@synchronized`指令，还必须在代码中启用Objective-C异常处理。如果不想要由隐式异常处理程序引起的额外开销，则应该考虑使用锁类。
+
+### 使用其他Cocoa锁
+
+#### 使用`NSRecursiveLock`对象
+
+`NSRecursiveLock`类定义了一个锁，它可以被同一个线程多次获取而不会导致线程死锁。递归锁会记录锁被成功获取的次数，每次成功获取锁后之必须通过相应的解锁锁来保持平衡。只有当所有的锁定和解锁调用平衡时，锁才会被释放，以便其他线程可以获取它。
+
+这种类型的锁常用于递归函数中，以防止递归阻塞线程。也可以类似地在非递归的情况下使用它来调用需要锁定的函数。这是一个简单递归函数的例子，其通过递归来获取锁。如果不是使用`NSRecursiveLock`对象为此函数加锁，则当再次调用该函数时，该线程将死锁。
+```
+NSRecursiveLock *theLock = [[NSRecursiveLock alloc] init];
+
+void MyRecursiveFunction(int value)
+{
+    [theLock lock];
+    if (value != 0)
+    {
+        --value;
+        MyRecursiveFunction(value);
+    }
+    [theLock unlock];
+}
+
+MyRecursiveFunction(5);
+```
+> **注意**：因为在所有的锁定和解锁调用保持平衡之前递归锁不会被释放，所以应该仔细衡量使用性能锁来应对潜在性能影响的决定。长时间保持锁定会导致其他线程阻塞直到递归完成。如果可以重写代码以消除递归或消除使用递归锁的需要，则可能会获得更好的性能。
+
+#### 使用`NSConditionLock`对象
 
