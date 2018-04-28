@@ -1460,7 +1460,76 @@ while (true)
 
 条件是一种特殊类型的锁，可以使用它来同步操作的执行顺序。等待条件的线程将一直处于阻塞状态，直到另一个线程显式地发送信号给该条件。
 
-由于涉及到实现操作系统的微妙之处，即使我们的代码没有发送信号到条件锁，条件锁也被允许返回虚假的成功。为了避免由这些虚假信号引起的问题，应该始终将谓词和条件锁结合起来使用。
+由于涉及到实现操作系统的微妙之处，即使我们的代码没有发送信号到条件锁，条件锁也被允许返回虚假的成功。为了避免由这些虚假信号引起的问题，应该始终将谓词和条件锁结合起来使用。谓词是确定线程继续执行是否安全的更具体的方法。条件使线程保持休眠状态，直到谓词可以由信号线程设置。
 
+### 使用NSCondition类
 
+`NSCondition`类提供与POSIX条件相同的语义，但将所需的锁和条件数据结构封装在单个对象中。以下代码显示了在`NSCondition`对象上等待的事件序列。`cocoaCondition`变量包含了一个`NSCondition`对象，`timeToDoWork`变量是一个整数，从另一个线程发送信号给条件之前，其会递增。
+```
+[cocoaCondition lock];
+while (timeToDoWork <= 0)
+[cocoaCondition wait];
+
+timeToDoWork--;
+
+// Do real work here.
+
+[cocoaCondition unlock];
+```
+```
+[cocoaCondition lock];
+timeToDoWork++;
+[cocoaCondition signal];
+[cocoaCondition unlock];
+```
+
+### 使用POSIX条件
+
+POSIX线程条件锁需要同时使用条件数据结构和互斥锁。虽然两个锁结果是分开的，但互斥锁在运行时与条件结构紧密相连。等待信号的线程应始终使用相同的互斥锁和条件结构。更改配对可能会导致错误。
+
+以下代码显示了条件和谓词的基本初始化和用法。初始化条件和互斥锁后，等待线程使用`ready_to_go`变量作为谓词进入while循环。只有当谓词被设置并且条件随后发出信号时，等待线程才会醒来并开始工作。
+```
+pthread_mutex_t mutex;
+pthread_cond_t condition;
+Boolean     ready_to_go = true;
+
+void MyCondInitFunction()
+{
+    pthread_mutex_init(&mutex);
+    pthread_cond_init(&condition, NULL);
+}
+
+void MyWaitOnConditionFunction()
+{
+    // Lock the mutex.
+    pthread_mutex_lock(&mutex);
+
+    // If the predicate is already set, then the while loop is bypassed;
+    // otherwise, the thread sleeps until the predicate is set.
+    while(ready_to_go == false)
+    {
+        pthread_cond_wait(&condition, &mutex);
+    }
+
+    // Do work. (The mutex should stay locked.)
+
+    // Reset the predicate and release the mutex.
+    ready_to_go = false;
+    pthread_mutex_unlock(&mutex);
+}
+```
+信号线程负责设置谓词并将信号发送到条件锁。以下代码中，该条件在互斥锁内部发出信号，以防止发生在条件竞争。
+```
+void SignalThreadUsingCondition()
+{
+    // At this point, there should be work for the other thread to do.
+    pthread_mutex_lock(&mutex);
+    ready_to_go = true;
+
+    // Signal the other thread to begin work.
+    pthread_cond_signal(&condition);
+
+    pthread_mutex_unlock(&mutex);
+}
+```
 
