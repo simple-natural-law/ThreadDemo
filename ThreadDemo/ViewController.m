@@ -148,6 +148,7 @@ void* PosixThreadMainRoutine(void* data)
 {
     NSLog(@"进入线程A");
     
+    // 使用以下方法创建定时器时，会自动附加定时器源到当前线程的run loop上。
     [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(timerFire:) userInfo:nil repeats:YES];
     
     NSInteger loopCount = 20;
@@ -161,9 +162,9 @@ void* PosixThreadMainRoutine(void* data)
     
     while (loopCount)
     {
-        // 进入事件处理循环，到达指定的时间点后自动退出事件处理循环。
-        [runLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:2]];
-        
+        // 进入事件处理循环，并在到达指定的日期后自动退出事件处理循环。
+        [runLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:1.5]];
+
         loopCount--;
     }
     
