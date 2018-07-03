@@ -50,6 +50,30 @@
 
 - (IBAction)creatThreadC:(id)sender
 {
+    pthread_attr_t attr;
+    pthread_t posixThreadID;
+    int returnVal;
+    
+    returnVal = pthread_attr_init(&attr);
+    
+    assert(!returnVal);
+    
+    // 设置线程的分离状态
+    returnVal = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    
+    assert(!returnVal);
+    
+    // 创建线程
+    int threadError = pthread_create(&posixThreadID, &attr, &PosixThreadMainRoutine, NULL);
+    
+    returnVal = pthread_attr_destroy(&attr);
+    
+    assert(!returnVal);
+    
+    if (threadError != 0)
+    {
+        // report an error
+    }
     
 }
 
@@ -82,6 +106,22 @@
     }
     
     NSLog(@"线程B退出");
+}
+
+
+void* PosixThreadMainRoutine(void* data)
+{
+    // do some work here
+    NSLog(@"线程C");
+    
+    for (NSInteger i = 0; i < 10; i++)
+    {
+        NSLog(@"%ld",i);
+    }
+    
+    NSLog(@"线程C退出");
+    
+    return NULL;
 }
 
 
