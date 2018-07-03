@@ -148,7 +148,7 @@ void* PosixThreadMainRoutine(void* data)
 {
     NSLog(@"进入线程A");
     
-    // 使用以下方法创建定时器时，会自动附加定时器源到当前线程的run loop上。
+    // 使用此方法创建定时器时，会自动附加定时器源到当前线程的run loop上。
     [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(timerFire:) userInfo:nil repeats:YES];
     
     NSInteger loopCount = 20;
