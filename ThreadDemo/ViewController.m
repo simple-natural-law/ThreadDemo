@@ -148,17 +148,29 @@ void* PosixThreadMainRoutine(void* data)
 {
     NSLog(@"进入线程A");
     
-    // 使用此方法创建定时器时，会自动附加定时器源到当前线程的run loop上。
-    [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(timerFire:) userInfo:nil repeats:YES];
-    
-    NSInteger loopCount = 20;
-    
     NSThread *thread = [NSThread currentThread];
     
     [thread.threadDictionary setObject:[NSNumber numberWithInteger:0] forKey:@"repeatCount"];
     
     // 获取当前线程的run loop对象
     NSRunLoop *runLoop = [NSRunLoop currentRunLoop];
+    
+    // 创建一个run loop观察者，并将其与run loop关联起来。
+    CFRunLoopObserverContext context = {0, (__bridge void *)(self), NULL, NULL, NULL};
+    
+    CFRunLoopObserverRef observer = CFRunLoopObserverCreate(kCFAllocatorDefault, kCFRunLoopAllActivities, YES, 0, &runLoopObserverCallBack, &context);
+    
+    if (observer)
+    {
+        CFRunLoopRef cfLoop = [runLoop getCFRunLoop];
+        
+        CFRunLoopAddObserver(cfLoop, observer, kCFRunLoopDefaultMode);
+    }
+    
+    NSInteger loopCount = 20;
+    
+    // 使用此方法创建定时器时，会自动附加定时器源到当前线程的run loop上。
+    [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(timerFire:) userInfo:nil repeats:YES];
     
     while (loopCount)
     {
@@ -171,6 +183,11 @@ void* PosixThreadMainRoutine(void* data)
     NSLog(@"退出线程A");
 }
 
+
+void runLoopObserverCallBack()
+{
+    NSLog(@"==========");
+}
 
 - (void)timerFire:(NSTimer *)timer
 {
