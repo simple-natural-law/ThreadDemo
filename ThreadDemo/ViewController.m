@@ -21,6 +21,10 @@
     // Do any additional setup after loading the view, typically from a nib.
 }
 
+
+/*
+ * 创建线程
+ */
 - (IBAction)creatThreadA:(id)sender
 {
     // 创建一个线程对象
@@ -124,6 +128,61 @@ void* PosixThreadMainRoutine(void* data)
     return NULL;
 }
 
+
+
+/*
+ * 配置 Run Loop
+ */
+- (IBAction)launchThreadA:(id)sender
+{
+    [NSThread detachNewThreadSelector:@selector(threadAMainRoutline) toTarget:self withObject:nil];
+}
+
+- (IBAction)launchThreadB:(id)sender
+{
+    
+}
+
+
+- (void)threadAMainRoutline
+{
+    NSLog(@"进入线程A");
+    
+    [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(timerFire:) userInfo:nil repeats:YES];
+    
+    NSInteger loopCount = 20;
+    
+    NSThread *thread = [NSThread currentThread];
+    
+    [thread.threadDictionary setObject:[NSNumber numberWithInteger:0] forKey:@"repeatCount"];
+    
+    // 获取当前线程的run loop对象
+    NSRunLoop *runLoop = [NSRunLoop currentRunLoop];
+    
+    while (loopCount)
+    {
+        // 进入事件处理循环，到达指定的时间点后自动退出事件处理循环。
+        [runLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:2]];
+        
+        loopCount--;
+    }
+    
+    NSLog(@"退出线程A");
+}
+
+
+- (void)timerFire:(NSTimer *)timer
+{
+    NSThread *thread = [NSThread currentThread];
+    
+    NSInteger repeatCount = [[thread.threadDictionary objectForKey:@"repeatCount"] integerValue];
+    
+    repeatCount++;
+    
+    [thread.threadDictionary setObject:[NSNumber numberWithInteger:repeatCount] forKey:@"repeatCount"];
+    
+    NSLog(@"============= %ld",repeatCount);
+}
 
 
 - (void)didReceiveMemoryWarning {
