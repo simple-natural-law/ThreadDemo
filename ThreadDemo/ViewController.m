@@ -7,6 +7,8 @@
 //
 
 #import "ViewController.h"
+#import <pthread/pthread.h>
+
 
 @interface ViewController ()
 
@@ -18,6 +20,70 @@
     [super viewDidLoad];
     // Do any additional setup after loading the view, typically from a nib.
 }
+
+- (IBAction)creatThreadA:(id)sender
+{
+    // 创建一个线程对象
+    NSThread *thread = [[NSThread alloc] initWithTarget:self selector:@selector(threadAMainMethod) object:nil];
+    
+    // 设置线程名称（方便调试）
+    thread.name = @"threadA";
+    
+    // 设置线程的优先级，默认为0.5
+    [thread setThreadPriority:0.6];
+    
+    // 设置可以从任何位置访问的线程局部存储（例如，我们可以使用它通过线程的run loop的多次迭代来保存状态信息）
+    [thread.threadDictionary setObject:[NSNumber numberWithBool:NO] forKey:@"ThreadShouldExitNow"];
+    
+    // 启动线程
+    [thread start];
+}
+
+
+- (IBAction)creatThreadB:(id)sender
+{
+    // 使用类方法直接分离一个新线程
+    [NSThread detachNewThreadSelector:@selector(threadBMainMethod) toTarget:self withObject:nil];
+}
+
+
+
+- (IBAction)creatThreadC:(id)sender
+{
+    
+}
+
+
+#pragma mark - main function of thread
+- (void)threadAMainMethod
+{
+    NSLog(@"线程A");
+    
+    for (NSInteger i = 0; i < 100; i++)
+    {
+        // 创建自动释放池，以便及时释放对象资源。否则，这些对象会一直保留，直到线程退出。
+        @autoreleasepool
+        {
+            NSString *str = [NSString stringWithFormat:@"%ld",i];
+            NSLog(@"%@",str);
+        }
+    }
+    
+    NSLog(@"线程A退出");
+}
+
+- (void)threadBMainMethod
+{
+    NSLog(@"线程B");
+    
+    for (NSInteger i = 0; i < 10; i++)
+    {
+        NSLog(@"%ld",i);
+    }
+    
+    NSLog(@"线程B退出");
+}
+
 
 
 - (void)didReceiveMemoryWarning {
