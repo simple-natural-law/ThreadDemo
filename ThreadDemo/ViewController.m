@@ -170,7 +170,7 @@ void* PosixThreadMainRoutine(void* data)
     NSInteger loopCount = 20;
     
     // 使用此方法创建定时器时，会自动附加定时器源到当前线程的run loop上。
-    [NSTimer scheduledTimerWithTimeInterval:5.0 target:self selector:@selector(timerFire:) userInfo:nil repeats:YES];
+    [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(timerFire:) userInfo:nil repeats:YES];
     
     while (loopCount)
     {
@@ -195,6 +195,54 @@ void* PosixThreadMainRoutine(void* data)
     NSLog(@"退出线程A");
 }
 
+- (void)threadBMainRoutline
+{
+    NSLog(@"进入线程B");
+    
+    BOOL done = NO;
+    
+    CFRunLoopRef cfLoop = CFRunLoopGetCurrent();
+    
+    CFRunLoopObserverContext context = {0, (__bridge void *)(self), NULL, NULL, NULL};
+    
+    CFRunLoopObserverRef observer = CFRunLoopObserverCreate(kCFAllocatorDefault, kCFRunLoopAllActivities, YES, 0, &runLoopObserverCallBack, &context);
+    
+    if (observer)
+    {
+        CFRunLoopAddObserver(cfLoop, observer, kCFRunLoopDefaultMode);
+    }
+    
+    NSInteger loopCount = 5;
+    
+    // Add your sources or timers to the run loop and do any other setup.
+    [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(timerFire:) userInfo:nil repeats:YES];
+    
+    do
+    {
+        // Start the run loop but return after each source is handled.
+        SInt32 result = CFRunLoopRunInMode(kCFRunLoopDefaultMode, 10.0, YES);
+        
+        // If a source explicitly stopped the run loop, or if there are no
+        // sources or timers, go ahead and exit.
+        if (result == kCFRunLoopRunStopped || result == kCFRunLoopRunFinished)
+        {
+            done = YES;
+        }
+        
+        // Check for any other exit conditions here and set the
+        // done variable as needed.
+        
+        loopCount--;
+        
+        if (loopCount == 0)
+        {
+            done = YES;
+        }
+        
+    } while (!done);
+    
+    NSLog(@"退出线程B");
+}
 
 void runLoopObserverCallBack(CFRunLoopObserverRef observer, CFRunLoopActivity activity, void *info)
 {
@@ -222,6 +270,7 @@ void runLoopObserverCallBack(CFRunLoopObserverRef observer, CFRunLoopActivity ac
     }
 }
 
+
 - (void)timerFire:(NSTimer *)timer
 {
     NSThread *thread = [NSThread currentThread];
@@ -233,12 +282,6 @@ void runLoopObserverCallBack(CFRunLoopObserverRef observer, CFRunLoopActivity ac
     [thread.threadDictionary setObject:[NSNumber numberWithInteger:repeatCount] forKey:@"repeatCount"];
     
     NSLog(@"============= %ld",repeatCount);
-}
-
-
-- (void)threadBMainRoutline
-{
-    
 }
 
 
