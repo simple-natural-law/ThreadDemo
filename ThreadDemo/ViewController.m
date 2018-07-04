@@ -177,12 +177,18 @@ void* PosixThreadMainRoutine(void* data)
         // 进入事件处理循环
         //[runLoop run];
         
-        // 以特定的模式进入事件处理循环，并在指定的日期自动退出事件处理循环。
-        //[runLoop runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:10.0]];
-        
         // 进入事件处理循环，并在指定的日期自动退出事件处理循环。
         //[runLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:1.5]];
+        
+        // 以特定的模式进入事件处理循环，并在指定的日期自动退出事件处理循环。
+        // 如果启动run loop并处理输入源或达到指定的超时值，则返回YES; 否则，如果无法启动run loop，则返回NO。
+        BOOL done = [runLoop runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:1.5]];
 
+        if (!done)
+        {
+            NSLog(@"启动 run loop 失败!!!");
+        }
+        
         loopCount--;
     }
     
