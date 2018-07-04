@@ -8,6 +8,7 @@
 
 #import "ViewController.h"
 #import <pthread/pthread.h>
+#import "CustomRunLoopSource.h"
 
 
 @interface ViewController ()
@@ -82,7 +83,6 @@
 }
 
 
-#pragma mark - main function of thread
 - (void)threadAMainMethod
 {
     NSLog(@"线程A");
@@ -141,6 +141,17 @@ void* PosixThreadMainRoutine(void* data)
 - (IBAction)launchThreadB:(id)sender
 {
     [NSThread detachNewThreadSelector:@selector(threadBMainRoutline) toTarget:self withObject:nil];
+}
+
+
+- (IBAction)launchThreadC:(id)sender
+{
+    NSThread *thread = [[NSThread alloc] initWithTarget:self selector:@selector(threadCMainRoutline) object:nil];
+    
+    // 设置线程名称（方便调试）
+    thread.name = @"CustomRunLoopSourceThread";
+    
+    [thread start];
 }
 
 
@@ -220,7 +231,7 @@ void* PosixThreadMainRoutine(void* data)
     do
     {
         // Start the run loop but return after each source is handled.
-        SInt32 result = CFRunLoopRunInMode(kCFRunLoopDefaultMode, 10.0, YES);
+        SInt32 result = CFRunLoopRunInMode(kCFRunLoopDefaultMode, 4.0, YES);
         
         // If a source explicitly stopped the run loop, or if there are no
         // sources or timers, go ahead and exit.
@@ -243,6 +254,61 @@ void* PosixThreadMainRoutine(void* data)
     
     NSLog(@"退出线程B");
 }
+
+
+
+
+- (void)threadCMainRoutline
+{
+    NSLog(@"进入线程C ----> %@",[NSThread currentThread].name);
+    
+    BOOL done = NO;
+    
+    CFRunLoopRef cfLoop = CFRunLoopGetCurrent();
+    
+    CFRunLoopObserverContext context = {0, (__bridge void *)(self), NULL, NULL, NULL};
+    
+    CFRunLoopObserverRef observer = CFRunLoopObserverCreate(kCFAllocatorDefault, kCFRunLoopAllActivities, YES, 0, &runLoopObserverCallBack, &context);
+    
+    if (observer)
+    {
+        CFRunLoopAddObserver(cfLoop, observer, kCFRunLoopDefaultMode);
+    }
+    
+    NSInteger loopCount = 5;
+    
+    // Add your sources or timers to the run loop and do any other setup.
+    CustomRunLoopSource *source = [[CustomRunLoopSource alloc] init];
+    
+    [source addToRunLoop:cfLoop withMode:kCFRunLoopDefaultMode];
+    
+    do
+    {
+        // Start the run loop but return after each source is handled.
+        SInt32 result = CFRunLoopRunInMode(kCFRunLoopDefaultMode, 10.0, YES);
+        
+        // If a source explicitly stopped the run loop, or if there are no
+        // sources or timers, go ahead and exit.
+        if (result == kCFRunLoopRunStopped || result == kCFRunLoopRunFinished)
+        {
+            done = YES;
+        }
+        
+        // Check for any other exit conditions here and set the
+        // done variable as needed.
+        
+        loopCount--;
+        
+        if (loopCount == 0)
+        {
+            done = YES;
+        }
+        
+    } while (!done);
+    
+    NSLog(@"退出线程C");
+}
+
 
 void runLoopObserverCallBack(CFRunLoopObserverRef observer, CFRunLoopActivity activity, void *info)
 {

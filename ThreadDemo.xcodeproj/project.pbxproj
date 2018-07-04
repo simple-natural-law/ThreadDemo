@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		3436281820EC716600F50F83 /* CustomRunLoopSource.m in Sources */ = {isa = PBXBuildFile; fileRef = 3436281720EC716600F50F83 /* CustomRunLoopSource.m */; };
+		3436281B20ECC07F00F50F83 /* CustomRunLoopSourceClient.m in Sources */ = {isa = PBXBuildFile; fileRef = 3436281A20ECC07F00F50F83 /* CustomRunLoopSourceClient.m */; };
 		34F1595A20C3DD4A00E5F9BE /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 34F1595920C3DD4A00E5F9BE /* AppDelegate.m */; };
 		34F1595D20C3DD4A00E5F9BE /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 34F1595C20C3DD4A00E5F9BE /* ViewController.m */; };
 		34F1596020C3DD4A00E5F9BE /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 34F1595E20C3DD4A00E5F9BE /* Main.storyboard */; };
@@ -19,6 +20,8 @@
 /* Begin PBXFileReference section */
 		3436281620EC716600F50F83 /* CustomRunLoopSource.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CustomRunLoopSource.h; sourceTree = "<group>"; };
 		3436281720EC716600F50F83 /* CustomRunLoopSource.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CustomRunLoopSource.m; sourceTree = "<group>"; };
+		3436281A20ECC07F00F50F83 /* CustomRunLoopSourceClient.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CustomRunLoopSourceClient.m; sourceTree = "<group>"; };
+		3436281C20ECC47D00F50F83 /* CustomRunLoopSourceClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CustomRunLoopSourceClient.h; sourceTree = "<group>"; };
 		34F1595520C3DD4A00E5F9BE /* ThreadDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ThreadDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		34F1595820C3DD4A00E5F9BE /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		34F1595920C3DD4A00E5F9BE /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -67,6 +70,8 @@
 				34F1595C20C3DD4A00E5F9BE /* ViewController.m */,
 				3436281620EC716600F50F83 /* CustomRunLoopSource.h */,
 				3436281720EC716600F50F83 /* CustomRunLoopSource.m */,
+				3436281C20ECC47D00F50F83 /* CustomRunLoopSourceClient.h */,
+				3436281A20ECC07F00F50F83 /* CustomRunLoopSourceClient.m */,
 				34F1595E20C3DD4A00E5F9BE /* Main.storyboard */,
 				34F1596120C3DD4C00E5F9BE /* Assets.xcassets */,
 				34F1596320C3DD4C00E5F9BE /* LaunchScreen.storyboard */,
@@ -147,6 +152,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				34F1595D20C3DD4A00E5F9BE /* ViewController.m in Sources */,
+				3436281B20ECC07F00F50F83 /* CustomRunLoopSourceClient.m in Sources */,
 				34F1596820C3DD4C00E5F9BE /* main.m in Sources */,
 				34F1595A20C3DD4A00E5F9BE /* AppDelegate.m in Sources */,
 				3436281820EC716600F50F83 /* CustomRunLoopSource.m in Sources */,

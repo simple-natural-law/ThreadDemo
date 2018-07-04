@@ -84,6 +84,15 @@
                                     <action selector="launchThreadB:" destination="BYZ-38-t0r" eventType="touchUpInside" id="Uq7-JD-gZF"/>
                                 </connections>
                             </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="y8i-w9-EWa">
+                                <rect key="frame" x="27" y="392" width="131" height="45"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <color key="backgroundColor" red="0.97647058819999999" green="0.88235294119999996" blue="0.59215686270000001" alpha="1" colorSpace="calibratedRGB"/>
+                                <state key="normal" title="自定义输入源"/>
+                                <connections>
+                                    <action selector="launchThreadC:" destination="BYZ-38-t0r" eventType="touchUpInside" id="rGf-yd-fd1"/>
+                                </connections>
+                            </button>
                         </subviews>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
