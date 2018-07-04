@@ -130,20 +130,19 @@ void* PosixThreadMainRoutine(void* data)
 
 
 
-/*
- * 配置 Run Loop
- */
+// 使用NSRunLoop来配置 Run Loop
 - (IBAction)launchThreadA:(id)sender
 {
     [NSThread detachNewThreadSelector:@selector(threadAMainRoutline) toTarget:self withObject:nil];
 }
 
+// 使用CFRunLoopRef来配置 Run Loop
 - (IBAction)launchThreadB:(id)sender
 {
     [NSThread detachNewThreadSelector:@selector(threadBMainRoutline) toTarget:self withObject:nil];
 }
 
-
+/// 自定义输入源
 - (IBAction)launchThreadC:(id)sender
 {
     NSThread *thread = [[NSThread alloc] initWithTarget:self selector:@selector(threadCMainRoutline) object:nil];
@@ -152,6 +151,47 @@ void* PosixThreadMainRoutine(void* data)
     thread.name = @"CustomRunLoopSourceThread";
     
     [thread start];
+}
+
+
+- (IBAction)installTimerSource:(id)sender
+{
+    // 第一种方式
+    NSTimer *timerA = [[NSTimer alloc] initWithFireDate:[NSDate dateWithTimeIntervalSinceNow:1.0] interval:1.0 target:self selector:@selector(timerActionA:) userInfo:nil repeats:YES];
+    
+    [[NSRunLoop currentRunLoop] addTimer:timerA forMode:NSDefaultRunLoopMode];
+    
+    // 第二种方式
+    [NSTimer scheduledTimerWithTimeInterval:2.0 target:self selector:@selector(timerActionB:) userInfo:nil repeats:YES];
+    
+    // 第三种方式
+    CFRunLoopTimerContext context = {0, NULL, NULL, NULL, NULL};
+    
+    CFRunLoopTimerRef timerC = CFRunLoopTimerCreate(kCFAllocatorDefault, 1.0, 3.0, 0, 0, &CFTimerCallBack, &context);
+    
+    CFRunLoopAddTimer(CFRunLoopGetCurrent(), timerC, kCFRunLoopDefaultMode);
+}
+
+- (void)timerActionA:(NSTimer *)timer
+{
+    NSLog(@"timerA fire");
+    
+    [timer invalidate];
+}
+
+
+- (void)timerActionB:(NSTimer *)timer
+{
+    NSLog(@"timerB fire");
+    
+    [timer invalidate];
+}
+
+void CFTimerCallBack (CFRunLoopTimerRef timer, void *info)
+{
+    NSLog(@"timerC fire");
+    
+    CFRunLoopTimerInvalidate(timer);
 }
 
 
