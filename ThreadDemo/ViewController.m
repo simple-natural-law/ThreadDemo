@@ -140,7 +140,7 @@ void* PosixThreadMainRoutine(void* data)
 
 - (IBAction)launchThreadB:(id)sender
 {
-    
+    [NSThread detachNewThreadSelector:@selector(threadBMainRoutline) toTarget:self withObject:nil];
 }
 
 
@@ -170,12 +170,18 @@ void* PosixThreadMainRoutine(void* data)
     NSInteger loopCount = 20;
     
     // 使用此方法创建定时器时，会自动附加定时器源到当前线程的run loop上。
-    [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(timerFire:) userInfo:nil repeats:YES];
+    [NSTimer scheduledTimerWithTimeInterval:5.0 target:self selector:@selector(timerFire:) userInfo:nil repeats:YES];
     
     while (loopCount)
     {
-        // 进入事件处理循环，并在到达指定的日期后自动退出事件处理循环。
-        [runLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:1.5]];
+        // 进入事件处理循环
+        //[runLoop run];
+        
+        // 以特定的模式进入事件处理循环，并在指定的日期自动退出事件处理循环。
+        //[runLoop runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:10.0]];
+        
+        // 进入事件处理循环，并在指定的日期自动退出事件处理循环。
+        //[runLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:1.5]];
 
         loopCount--;
     }
@@ -184,9 +190,30 @@ void* PosixThreadMainRoutine(void* data)
 }
 
 
-void runLoopObserverCallBack()
+void runLoopObserverCallBack(CFRunLoopObserverRef observer, CFRunLoopActivity activity, void *info)
 {
-    NSLog(@"==========");
+    switch (activity) {
+        case kCFRunLoopEntry:
+            NSLog(@"进入 run loop");
+            break;
+        case kCFRunLoopBeforeTimers:
+            NSLog(@"定时器即将触发");
+            break;
+        case kCFRunLoopBeforeSources:
+            NSLog(@"不是基于端口的输入源即将触发");
+            break;
+        case kCFRunLoopBeforeWaiting:
+            NSLog(@"线程即将进入休眠状态");
+            break;
+        case kCFRunLoopAfterWaiting:
+            NSLog(@"线程刚被唤醒");
+            break;
+        case kCFRunLoopExit:
+            NSLog(@"退出 run loop");
+            break;
+        default:
+            break;
+    }
 }
 
 - (void)timerFire:(NSTimer *)timer
@@ -201,6 +228,13 @@ void runLoopObserverCallBack()
     
     NSLog(@"============= %ld",repeatCount);
 }
+
+
+- (void)threadBMainRoutline
+{
+    
+}
+
 
 
 - (void)didReceiveMemoryWarning {
