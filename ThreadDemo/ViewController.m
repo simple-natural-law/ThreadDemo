@@ -10,10 +10,6 @@
 #import <pthread/pthread.h>
 #import "CustomRunLoopSource.h"
 #import "CustomRunLoopSourceClient.h"
-#import "Worker.h"
-
-
-#define kCheckinMessage 100
 
 
 @interface ViewController ()<NSPortDelegate>
@@ -405,16 +401,7 @@ void CFTimerCallBack (CFRunLoopTimerRef timer, void *info)
 // 配置基于端口的输入源
 - (IBAction)launchThread:(id)sender
 {
-    NSPort *port = [NSMachPort port];
     
-    if (port)
-    {
-        // This class handles incoming port messages.
-        [port setDelegate:self];
-        
-        // Install the port as an input source on the current run loop.
-        [[NSRunLoop currentRunLoop] addPort:port forMode:NSDefaultRunLoopMode];
-    }
 }
 
 
