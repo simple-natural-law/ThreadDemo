@@ -417,12 +417,6 @@ void CFTimerCallBack (CFRunLoopTimerRef timer, void *info)
     }
 }
 
-#pragma mark- NSPortDelegate
-- (void)handlePortMessage:(NSPortMessage *)portMessage
-{
-    
-}
-
 
 // run loop 观察者回调
 void runLoopObserverCallBack(CFRunLoopObserverRef observer, CFRunLoopActivity activity, void *info)
