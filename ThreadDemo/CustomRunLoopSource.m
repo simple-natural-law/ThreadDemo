@@ -49,6 +49,8 @@
 
 - (void)sourceFired
 {
+    [self.lock lock];
+    
     for (NSDictionary *info in self.commandArray)
     {
         NSDictionary *data = info[@"data"];
@@ -76,8 +78,6 @@
         
         [invocation invoke];
     }
-    
-    [self.lock lock];
     
     [self.commandArray removeAllObjects];
     

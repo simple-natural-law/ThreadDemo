@@ -1516,7 +1516,7 @@ void MyWaitOnConditionFunction()
     pthread_mutex_unlock(&mutex);
 }
 ```
-信号线程负责设置谓词并将信号发送到条件锁。以下代码中，该条件在互斥锁内部发出信号，以防止发生在条件竞争。
+信号线程负责设置谓词并将信号发送到条件锁。以下代码中，该条件在互斥锁内部发出信号，以防止在等待条件的线程之间发生条件竞争。
 ```
 void SignalThreadUsingCondition()
 {
