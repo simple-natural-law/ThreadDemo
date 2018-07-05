@@ -18,4 +18,6 @@
 
 - (void)removeSourceWithContext:(RunLoopContext *)context;
 
+- (void)addTarget:(id)target WithSelector:(SEL)selector;
+
 @end

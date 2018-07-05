@@ -9,9 +9,14 @@
 #import "ViewController.h"
 #import <pthread/pthread.h>
 #import "CustomRunLoopSource.h"
+#import "CustomRunLoopSourceClient.h"
 
 
 @interface ViewController ()
+{
+    NSInteger count;
+}
+
 
 @end
 
@@ -136,65 +141,6 @@ void* PosixThreadMainRoutine(void* data)
     [NSThread detachNewThreadSelector:@selector(threadAMainRoutline) toTarget:self withObject:nil];
 }
 
-// 使用CFRunLoopRef来配置 Run Loop
-- (IBAction)launchThreadB:(id)sender
-{
-    [NSThread detachNewThreadSelector:@selector(threadBMainRoutline) toTarget:self withObject:nil];
-}
-
-/// 自定义输入源
-- (IBAction)launchThreadC:(id)sender
-{
-    NSThread *thread = [[NSThread alloc] initWithTarget:self selector:@selector(threadCMainRoutline) object:nil];
-    
-    // 设置线程名称（方便调试）
-    thread.name = @"CustomRunLoopSourceThread";
-    
-    [thread start];
-}
-
-
-- (IBAction)installTimerSource:(id)sender
-{
-    // 第一种方式
-    NSTimer *timerA = [[NSTimer alloc] initWithFireDate:[NSDate dateWithTimeIntervalSinceNow:1.0] interval:1.0 target:self selector:@selector(timerActionA:) userInfo:nil repeats:YES];
-    
-    [[NSRunLoop currentRunLoop] addTimer:timerA forMode:NSDefaultRunLoopMode];
-    
-    // 第二种方式
-    [NSTimer scheduledTimerWithTimeInterval:2.0 target:self selector:@selector(timerActionB:) userInfo:nil repeats:YES];
-    
-    // 第三种方式
-    CFRunLoopTimerContext context = {0, NULL, NULL, NULL, NULL};
-    
-    CFRunLoopTimerRef timerC = CFRunLoopTimerCreate(kCFAllocatorDefault, 1.0, 3.0, 0, 0, &CFTimerCallBack, &context);
-    
-    CFRunLoopAddTimer(CFRunLoopGetCurrent(), timerC, kCFRunLoopDefaultMode);
-}
-
-- (void)timerActionA:(NSTimer *)timer
-{
-    NSLog(@"timerA fire");
-    
-    [timer invalidate];
-}
-
-
-- (void)timerActionB:(NSTimer *)timer
-{
-    NSLog(@"timerB fire");
-    
-    [timer invalidate];
-}
-
-void CFTimerCallBack (CFRunLoopTimerRef timer, void *info)
-{
-    NSLog(@"timerC fire");
-    
-    CFRunLoopTimerInvalidate(timer);
-}
-
-
 - (void)threadAMainRoutline
 {
     NSLog(@"进入线程A");
@@ -234,7 +180,7 @@ void CFTimerCallBack (CFRunLoopTimerRef timer, void *info)
         // 以特定的模式进入事件处理循环，并在指定的日期自动退出事件处理循环。
         // 如果启动run loop并处理输入源或达到指定的超时值，则返回YES; 否则，如果无法启动run loop，则返回NO。
         BOOL done = [runLoop runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:1.5]];
-
+        
         if (!done)
         {
             NSLog(@"启动 run loop 失败!!!");
@@ -244,6 +190,28 @@ void CFTimerCallBack (CFRunLoopTimerRef timer, void *info)
     }
     
     NSLog(@"退出线程A");
+}
+
+
+- (void)timerFire:(NSTimer *)timer
+{
+    NSThread *thread = [NSThread currentThread];
+    
+    NSInteger repeatCount = [[thread.threadDictionary objectForKey:@"repeatCount"] integerValue];
+    
+    repeatCount++;
+    
+    [thread.threadDictionary setObject:[NSNumber numberWithInteger:repeatCount] forKey:@"repeatCount"];
+    
+    NSLog(@"============= %ld",repeatCount);
+}
+
+
+
+// 使用CFRunLoopRef来配置 Run Loop
+- (IBAction)launchThreadB:(id)sender
+{
+    [NSThread detachNewThreadSelector:@selector(threadBMainRoutline) toTarget:self withObject:nil];
 }
 
 - (void)threadBMainRoutline
@@ -297,6 +265,21 @@ void CFTimerCallBack (CFRunLoopTimerRef timer, void *info)
 
 
 
+/// 自定义输入源
+- (IBAction)launchThreadC:(id)sender
+{
+    NSThread *thread = [[NSThread alloc] initWithTarget:self selector:@selector(threadCMainRoutline) object:nil];
+    
+    // 设置线程名称（方便调试）
+    thread.name = @"CustomRunLoopSourceThread";
+    
+    [thread start];
+    
+    count = 5;
+    
+    [NSTimer scheduledTimerWithTimeInterval:3.0 target:self selector:@selector(inputEvent:) userInfo:nil repeats:YES];
+}
+
 
 - (void)threadCMainRoutline
 {
@@ -315,7 +298,7 @@ void CFTimerCallBack (CFRunLoopTimerRef timer, void *info)
         CFRunLoopAddObserver(cfLoop, observer, kCFRunLoopDefaultMode);
     }
     
-    NSInteger loopCount = 5;
+    NSInteger loopCount = 10;
     
     // Add your sources or timers to the run loop and do any other setup.
     CustomRunLoopSource *source = [[CustomRunLoopSource alloc] init];
@@ -350,6 +333,72 @@ void CFTimerCallBack (CFRunLoopTimerRef timer, void *info)
 }
 
 
+- (void)inputEvent:(NSTimer *)timer
+{
+    [[CustomRunLoopSourceClient shared] addTarget:self WithSelector:@selector(exampleMethod)];
+    
+    count--;
+    
+    if (count == 0)
+    {
+        [timer invalidate];
+        
+        timer = nil;
+    }
+}
+
+- (void)exampleMethod
+{
+    sleep(2);
+    
+    NSLog(@"\n当前线程 ----> %@\n",[NSThread currentThread].name);
+    
+    NSLog(@"\n**** 处理输入源传入的事件 ****\n");
+}
+
+// 配置定时器源
+- (IBAction)installTimerSource:(id)sender
+{
+    // 第一种方式
+    NSTimer *timerA = [[NSTimer alloc] initWithFireDate:[NSDate dateWithTimeIntervalSinceNow:1.0] interval:1.0 target:self selector:@selector(timerActionA:) userInfo:nil repeats:YES];
+    
+    [[NSRunLoop currentRunLoop] addTimer:timerA forMode:NSDefaultRunLoopMode];
+    
+    // 第二种方式
+    [NSTimer scheduledTimerWithTimeInterval:2.0 target:self selector:@selector(timerActionB:) userInfo:nil repeats:YES];
+    
+    // 第三种方式
+    CFRunLoopTimerContext context = {0, NULL, NULL, NULL, NULL};
+    
+    CFRunLoopTimerRef timerC = CFRunLoopTimerCreate(kCFAllocatorDefault, 1.0, 3.0, 0, 0, &CFTimerCallBack, &context);
+    
+    CFRunLoopAddTimer(CFRunLoopGetCurrent(), timerC, kCFRunLoopDefaultMode);
+}
+
+- (void)timerActionA:(NSTimer *)timer
+{
+    NSLog(@"timerA fire");
+    
+    [timer invalidate];
+}
+
+
+- (void)timerActionB:(NSTimer *)timer
+{
+    NSLog(@"timerB fire");
+    
+    [timer invalidate];
+}
+
+void CFTimerCallBack (CFRunLoopTimerRef timer, void *info)
+{
+    NSLog(@"timerC fire");
+    
+    CFRunLoopTimerInvalidate(timer);
+}
+
+
+// run loop 观察者回调
 void runLoopObserverCallBack(CFRunLoopObserverRef observer, CFRunLoopActivity activity, void *info)
 {
     switch (activity) {
@@ -375,21 +424,6 @@ void runLoopObserverCallBack(CFRunLoopObserverRef observer, CFRunLoopActivity ac
             break;
     }
 }
-
-
-- (void)timerFire:(NSTimer *)timer
-{
-    NSThread *thread = [NSThread currentThread];
-    
-    NSInteger repeatCount = [[thread.threadDictionary objectForKey:@"repeatCount"] integerValue];
-    
-    repeatCount++;
-    
-    [thread.threadDictionary setObject:[NSNumber numberWithInteger:repeatCount] forKey:@"repeatCount"];
-    
-    NSLog(@"============= %ld",repeatCount);
-}
-
 
 
 - (void)didReceiveMemoryWarning {

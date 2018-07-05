@@ -95,9 +95,12 @@
 
 - (void)fireAllCommandsOnRunLoop:(CFRunLoopRef)runloop
 {
-    CFRunLoopSourceSignal(self.runLoopSource);
-    
-    CFRunLoopWakeUp(runloop);
+    if (self.commandArray.count)
+    {
+        CFRunLoopSourceSignal(self.runLoopSource);
+        
+        CFRunLoopWakeUp(runloop);
+    }
 }
 
 

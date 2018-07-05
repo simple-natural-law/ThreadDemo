@@ -14,8 +14,6 @@
 
 @property (nonatomic, strong) RunLoopContext *context;
 
-@property (nonatomic, strong) NSTimer *timer;
-
 @end
 
 
@@ -36,34 +34,22 @@
 {
     self.context = context;
     
-    if (self.context)
-    {
-        self.timer = [NSTimer scheduledTimerWithTimeInterval:3.0 target:self selector:@selector(timerFired:) userInfo:nil repeats:YES];
-    }
+    [self.context.runLoopSource fireAllCommandsOnRunLoop:self.context.runloop];
 }
 
-- (void)timerFired:(NSTimer *)timer
+- (void)addTarget:(id)target WithSelector:(SEL)selector
 {
-    [self.context.runLoopSource addCommand:10000 withData:@{@"target":self,@"selector":NSStringFromSelector(@selector(exampleMethod))}];
+    [self.context.runLoopSource addCommand:10000 withData:@{@"target":target,@"selector":NSStringFromSelector(selector)}];
     
-    [self.context.runLoopSource fireAllCommandsOnRunLoop:self.context.runloop];
+    if (self.context)
+    {
+        [self.context.runLoopSource fireAllCommandsOnRunLoop:self.context.runloop];
+    }
 }
 
 - (void)removeSourceWithContext:(RunLoopContext *)context
 {
     self.context = nil;
-    
-    [self.timer invalidate];
-    
-    self.timer = nil;
-}
-
-
-- (void)exampleMethod
-{
-    NSLog(@"当前线程 ----> %@",[NSThread currentThread].name);
-    
-    NSLog(@"**** 处理输入源传入的事件 ****\n");
 }
 
 @end
