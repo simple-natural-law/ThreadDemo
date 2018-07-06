@@ -398,13 +398,6 @@ void CFTimerCallBack (CFRunLoopTimerRef timer, void *info)
 }
 
 
-// 配置基于端口的输入源
-- (IBAction)launchThread:(id)sender
-{
-    
-}
-
-
 // run loop 观察者回调
 void runLoopObserverCallBack(CFRunLoopObserverRef observer, CFRunLoopActivity activity, void *info)
 {
@@ -431,6 +424,10 @@ void runLoopObserverCallBack(CFRunLoopObserverRef observer, CFRunLoopActivity ac
             break;
     }
 }
+
+
+
+
 
 
 - (void)didReceiveMemoryWarning {
